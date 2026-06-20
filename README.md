@@ -16,8 +16,9 @@ An AI system that helps store associates decide which hot food item to cook firs
 6. [Data Structure](#data-structure)
 7. [Success Criteria](#success-criteria)
 8. [Key Risks & Mitigations](#key-risks--mitigations)
-9. [Getting Started](#getting-started)
-10. [Project Structure](#project-structure)
+9. [Cost & ROI](#cost--roi)
+10. [Getting Started](#getting-started)
+11. [Project Structure](#project-structure)
 
 ---
 
@@ -25,15 +26,19 @@ An AI system that helps store associates decide which hot food item to cook firs
 
 ### The Customer
 
-Store associates (18–55 years old, part-time or full-time, minimal food training) working the hot bar at 7-Eleven locations during peak hours.
+New-hire store associate (<6 months on job) at a 7-Eleven with an active hot food program. Age 18–55, high school education, English may not be first language, minimal food-service training. Cooks solo while simultaneously handling the register, restocking shelves, and serving customers.
 
 ### The Moment
 
-At 11:47 AM during lunch rush, when Food Planner shows 5 items due in overlapping 15-minute windows (pizza at 12:00 PM, wings at 11:45 AM, nachos at 12:30 PM) with one oven and 30 seconds before the next customer arrives or batch finishes cooking.
+It is 11:47 AM during lunch peak (11 AM–1 PM). Food Planner shows five items due in overlapping 15-minute windows — pizza (5-min cook), wings (12-min cook), beef mini tacos (6-min cook), waffle tots (10-min cook), and hot dogs — with one oven available. A customer is waiting at the register. The associate has roughly 30 seconds to decide which item to load first before the next task pulls them away. Food Planner tells them what to cook and when, but not which to load first given oven constraints, and not what to deprioritize if they are already running behind.
 
 ### The Job-to-be-Done
 
-When I'm a store associate during lunch peak with 5 items due to cook in overlapping daypart windows, one oven, and customers waiting, I want to know which item to cook first — accounting for how long it takes and when the daypart closes — so I can make one decision and start cooking without guessing, and hit every daypart on time (no stockouts, no angry customers) and avoid waste (no items expiring in the warmer).
+When I'm a store associate during lunch peak (11 AM–1 PM) with 5 items due in overlapping 15-minute windows, one oven, and customers waiting, I want to know which item to cook first — accounting for cook time and daypart close time — so I can make one decision and start cooking without guessing, hit every daypart on time (no stockouts, no angry customers), and avoid waste (no items expiring in the warmer). But first I need to trust the ranking enough to follow it instead of defaulting to habit, and the system needs to explain why in plain language, not a score.
+
+I also want to stop feeling like I'm constantly catching up and falling behind during peak hours, so I can stop worrying about my job security — but first I need to complete the tasks in front of me at least 50% faster.
+
+And when I execute a ranked cook sequence and hit every daypart on time, I want my shift manager to see that I'm handling tasks with speed and competence, so I can prove I'm reliable — but first I need the system to explain its reasoning so I can defend my decisions if questioned, and my performance needs to be visible to the manager.
 
 ### The Current Pain
 
@@ -924,15 +929,18 @@ python scripts/compare_llm_versions.py v0.1 v0.2
 
 ### Week 12 Targets
 
-| Metric | Target | How We Measure |
-|--------|--------|---|
-| **Model Accuracy** | ≥75% on test set | Cross-validation on holdout data |
-| **Daypart On-Time Rate** | ≥95% | % of dayparts where min presentation is hit |
-| **Write-Off Reduction** | 10–15% vs. v1 | Compare predicted outcomes v1 vs. v2 |
-| **Associate Adherence** | ≥80% follow system | Track overrides (planned for production) |
-| **Data Quality** | 95% usable | High + medium confidence scenarios |
-| **Demo Robustness** | Zero errors | Run end-to-end 10+ times without failures |
-| **Documentation** | Complete | README, assumptions, limitations all documented |
+| Metric | Baseline | Target | How We Measure |
+|--------|----------|--------|---|
+| **Model Accuracy** | — | ≥75% on test set | Cross-validation on holdout data |
+| **Cook Decision Time** | ~60 sec | ≤5 sec | Time from oven-free to load decision |
+| **Daypart Hit Rate** | ~25% | ≥75% | % of dayparts where min presentation is reached before window closes |
+| **Write-Off Rate** | ~3 units/hr | ≤1 unit/hr | Write-offs per store per hour vs. forecast |
+| **Correct Sequence Rate** | — | ≥70% of ranked decisions | AI rank results in zero daypart miss vs. baseline |
+| **Associate Adherence** | — | ≥80% follow system | Track overrides (target ≤20% override rate) |
+| **Pilot Usage** | — | ≥6 ranked sequences/store/day at ≥60% of pilot stores | Usage instrumentation |
+| **Data Quality** | — | 95% usable | High + medium confidence scenarios |
+| **Demo Robustness** | — | Zero errors | Run end-to-end 10+ times without failures |
+| **Documentation** | — | Complete | README, assumptions, limitations all documented |
 
 ### Evaluation on High-Confidence Scenarios
 
@@ -945,37 +953,61 @@ For the 15,308 high-confidence scenarios (66.4% of data):
 
 ## KEY RISKS & MITIGATIONS
 
-### Risk 1: Mis-Governance (Associates Don't Follow System)
+### Risk 1: Adoption Risk (Associates Don't Follow System)
 
-**Failure Mode:** Associates don't trust the ranking and cook by habit anyway, so the system goes unused and metrics don't improve.
+**Failure Mode:** Associates don't trust the ranking and load by habit anyway. Override data dries up, the feedback loop dies, and the model never improves. Associate loads wings last — they miss their window — and the stockout is invisible to management.
 
 **Mitigation:**
-- ✅ Template-based explanations (clear reasoning, no hallucination risk)
-- ✅ Planned adherence tracking (measure % following system)
+- ✅ Template-based plain-language explanations (clear reasoning associates can defend to their manager)
+- ✅ Planned adherence tracking (measure % following system; counter-metric: override rate ≤20%)
 - ✅ Trust-building: target 80%+ adherence as success metric, not 100%
-- ✅ Override logging (understand why associates deviate, improve model accordingly)
+- ✅ Override logging is mandatory — every override is the most valuable training signal; without it the feedback loop dies
 
-### Risk 2: Data Quality (Synthetic Data Doesn't Match Reality)
+### Risk 2: Data Quality (Noisy Write-Off Records Corrupt Training Labels)
 
-**Failure Mode:** The synthetic baseline doesn't reflect real store conditions (urban vs. highway, seasonal patterns, customer preferences). The model learns from fake data and performs no better than v1 hard-coded rules in production.
+**Failure Mode:** Write-off records contain missing entries, manual errors, and misattribution. Noisy training labels cause the model to recommend confidently wrong sequences. Trust collapses faster than it was built.
 
 **Mitigation:**
-- ✅ Realistic synthetic generation (based on domain expert estimates)
-- ✅ Quality assessment (compare inferred vs. logged, flag gaps)
+- ✅ Realistic synthetic generation (injected 60/15/20/5 quality distribution; independently validated)
+- ✅ Confidence classification (high/medium/low) — exclude low-confidence events from training
 - ✅ Honest documentation (flag synthetic data limitations upfront)
-- ✅ Production path: real baseline would require 6+ months of actual warmer data
+- ✅ Production path: requires 6+ months of labeled execution data from 13,000+ stores before production training; audit protocols required for write-off records before use
 - ✅ Stratified by store type (acknowledge different stores have different patterns)
 
-### Risk 3: Mis-Priced Economics (Cost Exceeds Benefit)
+### Risk 3: Governance Risk at Scale (No Attribution Path for Failures)
 
-**Failure Mode:** Building a real baseline and maintaining the system costs more than the value from waste reduction. By the time the model is production-ready, faster competitors have shipped better solutions.
+**Failure Mode:** Model errors compound across stores. There is no attribution path between a model failure and an associate override. Corporate cannot tell whether a daypart miss was caused by the model or the associate, so the system gets blamed and pulled.
+
+**Mitigation:**
+- ✅ Override logging creates an auditable per-decision record (was the ranked sequence followed or overridden?)
+- ✅ Per-store accuracy tracking (identify stores where model diverges from outcomes)
+- ✅ Phased rollout — pilot 50 urban stores first; validate attribution before scaling to full chain
+
+### Risk 4: Mis-Priced Economics (Cost Exceeds Benefit)
+
+**Failure Mode:** Building a real baseline and maintaining the system costs more than the value from waste reduction.
 
 **Mitigation:**
 - ✅ Simple v1 (zero inference cost)
-- ✅ Lightweight v2 (RandomForest, not deep learning)
-- ✅ Documented ROI (10–15% waste reduction = X dollars saved per store)
+- ✅ Lightweight v2 (GBM, not deep learning; ~$0.021/call, $12.87/store/month at pilot)
+- ✅ Documented ROI: $180/store/month in write-off savings vs. $12.87 cost ≈ 13x ROI at pilot, ~22x at full chain
 - ✅ Clear production requirements (6-month baseline, weekly retraining, monitoring)
-- ✅ Phased rollout (pilot urban stores first, expand based on results)
+
+---
+
+## COST & ROI
+
+| Item | Detail |
+|------|--------|
+| **Per-call cost** | ~$0.021 (inference $0.000004 + API gateway $0.0000035 + human spot-check $0.02 at 1% review rate) |
+| **Usage shape** | 12 calls/store/day (one decision per ~2-hour cook cycle); predictable and flat — no token explosion risk |
+| **Cost at pilot (50 stores)** | ~$12.87/store/month |
+| **Cost at full chain (13,000 stores)** | ~$7.72/store/month (fixed costs amortize: hosting $150/mo, observability $40/mo, feature store $60/mo) |
+| **Write-off savings** | ~$180/store/month (3 units/hr → 1 unit/hr reduction) |
+| **ROI at pilot** | ~13x |
+| **ROI at full chain** | ~22x |
+
+Internal tool — no SaaS pricing. Value case: $180/store/month savings vs. $12.87 cost at pilot.
 
 ---
 
