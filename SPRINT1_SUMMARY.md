@@ -68,7 +68,26 @@ Built an end-to-end AI cook-scheduling system covering all five layers:
 
 ---
 
-## 4. Iteration: v0.1 → v0.2
+## 4. ML Model Iterations (v2 → v2.2)
+
+**Design goal:** Beat v1's rule-based formula by learning from labeled historical outcomes, without overfitting to the synthetic data's temporal patterns.
+
+| Iteration | Approach | Key Change | Result |
+|---|---|---|---|
+| **v1** | Rule-based heuristic | `urgency × demand_density × waste_penalty`; no training | 71.8% top-1 (6,480 decision pts) |
+| **v2** | Multiclass RandomForest | Composite priority labels (urgency + hold_penalty − waste_ratio); 49 features | 64.2% CV — worse than expected; pizza/wings_2h confusion |
+| **v2.1** | Pairwise GBM | Reframed as "A before B?" binary; added historical write-off features by item × hour × store_type | 76.5% top-1 — +12.3pp over v2; but leaked test-period data into historical features |
+| **v2.2** | Pairwise GBM + temporal split + soft labels | Train on days 1–120 only; historical features computed from train partition only; near-tied pairs downweighted (0.33) | **74.3% honest test** — "honesty tax" of −2pp vs v2.1; no data leakage |
+
+**Key lessons:**
+- **Labeling strategy mattered more than model architecture.** v2 with noisy labels (42% CV) → v2 with composite labels (64% CV) — same model, same features.
+- **Pairwise reframing broke the pizza/wings_2h deadlock.** Multiclass "which of 4?" confused items with identical 2h hold times. Pairwise "A before B?" gave each pair dedicated training signal.
+- **Historical write-off features were the biggest single jump.** `avg_writeoff_by_hour[item][hour]` distinguished items that look identical on instantaneous features. Item B's waste history is the model's strongest signal (importance 0.174).
+- **Temporal split revealed the real generalization gap.** v2.1's 76.5% was inflated because historical features used future data. v2.2's 74.3% is the number to trust.
+
+---
+
+## 5. Iteration: v0.1 → v0.2 (LLM Prompt)
 
 **Design constraint:** v0.2 changes must strengthen associate voice, not encode formula logic. Improvement in label accuracy is a side effect of clearer reasoning, not a goal in itself. If LLM diverges from a label, investigate the label — don't fix the prompt to match.
 
