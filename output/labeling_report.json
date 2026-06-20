@@ -1,0 +1,20 @@
+{
+  "total_labeled_scenarios": 5355,
+  "first_item_distribution": {
+    "baked_goods": 286,
+    "pizza": 3209,
+    "wings_2h": 1859,
+    "wings_4h": 1
+  },
+  "store_type_distribution": {
+    "highway": 1811,
+    "suburban": 1808,
+    "urban": 1736
+  },
+  "rank_size_distribution": {
+    "2": 2824,
+    "3": 2114,
+    "4": 417
+  },
+  "v1_agreement_pct": 70.0
+}

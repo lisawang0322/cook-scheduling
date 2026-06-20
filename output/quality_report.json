@@ -1,0 +1,65 @@
+{
+  "total_cook_events": 23061,
+  "confidence_breakdown": {
+    "high": {
+      "count": 15308,
+      "percentage": 66.4
+    },
+    "medium": {
+      "count": 5457,
+      "percentage": 23.7
+    },
+    "low": {
+      "count": 2296,
+      "percentage": 10.0
+    }
+  },
+  "quality_issues": {
+    "accurate": {
+      "count": 15308,
+      "percentage": 66.4
+    },
+    "gap": {
+      "count": 3471,
+      "percentage": 15.1
+    },
+    "counting_error": {
+      "count": 1986,
+      "percentage": 8.6
+    },
+    "major_discrepancy": {
+      "count": 2296,
+      "percentage": 10.0
+    }
+  },
+  "by_store_type": {
+    "highway": {
+      "total": 7646,
+      "high": 5169,
+      "medium": 1854,
+      "low": 623,
+      "high_pct": 67.6,
+      "medium_pct": 24.2,
+      "low_pct": 8.1
+    },
+    "suburban": {
+      "total": 7709,
+      "high": 5151,
+      "medium": 1794,
+      "low": 764,
+      "high_pct": 66.8,
+      "medium_pct": 23.3,
+      "low_pct": 9.9
+    },
+    "urban": {
+      "total": 7706,
+      "high": 4988,
+      "medium": 1809,
+      "low": 909,
+      "high_pct": 64.7,
+      "medium_pct": 23.5,
+      "low_pct": 11.8
+    }
+  },
+  "usable_for_training_pct": 90.0
+}

@@ -1,0 +1,51 @@
+{
+  "model_type": "pairwise_gradient_boosting",
+  "cross_validation": {
+    "cv_folds": 5,
+    "scores": [
+      0.8468,
+      0.8532,
+      0.8627,
+      0.8467,
+      0.8608
+    ],
+    "mean_accuracy": 85.4,
+    "std_accuracy": 0.7
+  },
+  "training_set": {
+    "n_samples": 7832,
+    "n_features": 36,
+    "label_distribution": {
+      "1": 5788,
+      "0": 2044
+    }
+  },
+  "training_accuracy": 87.1,
+  "feature_importance_top10": {
+    "b_hist_wo_overall": 0.20016815534789129,
+    "diff_demand": 0.15190802278078985,
+    "b_lcu": 0.1196972819719339,
+    "diff_demand_density": 0.09904071325475518,
+    "day_of_week": 0.08273887346565101,
+    "a_hist_wo_store": 0.04747926642009888,
+    "diff_demand_vs_avg": 0.04152101404629327,
+    "b_hist_wo_store": 0.029238995873502573,
+    "diff_hist_wo_overall": 0.02707930233363152,
+    "diff_hist_wo_store": 0.024276134582690758
+  },
+  "temporal_split": {
+    "cutoff_date": "2025-05-01",
+    "train_scenarios": 3608,
+    "test_scenarios": 1747,
+    "train_cv_accuracy": 85.4,
+    "test_top1_accuracy": 74.3,
+    "full_top1_accuracy": 75.5
+  },
+  "sample_weights": {
+    "enabled": true,
+    "min_weight": 0.3,
+    "max_weight": 1.0,
+    "mean_weight": 0.616,
+    "low_weight_pct": 24.5
+  }
+}

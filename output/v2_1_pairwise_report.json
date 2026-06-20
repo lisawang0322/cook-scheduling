@@ -1,0 +1,40 @@
+{
+  "model_type": "pairwise_gradient_boosting",
+  "cross_validation": {
+    "cv_folds": 5,
+    "scores": [
+      0.847,
+      0.8698,
+      0.8578,
+      0.8483,
+      0.8568
+    ],
+    "mean_accuracy": 85.6,
+    "std_accuracy": 0.8
+  },
+  "training_set": {
+    "n_samples": 11668,
+    "n_features": 36,
+    "label_distribution": {
+      "1": 8646,
+      "0": 3022
+    }
+  },
+  "training_accuracy": 87.2,
+  "feature_importance_top10": {
+    "diff_demand_density": 0.3600577069868932,
+    "b_hist_wo_overall": 0.09379768648999968,
+    "b_hist_wo_store": 0.05948608904311747,
+    "b_cooked_qty": 0.057816068222109204,
+    "day_of_week": 0.05243444218217289,
+    "b_lcu": 0.051152483818056,
+    "diff_demand": 0.04951615611795455,
+    "b_demand": 0.04427250216618688,
+    "diff_demand_vs_avg": 0.03917412599950512,
+    "diff_hist_wo_overall": 0.034965498131589084
+  },
+  "ranking_accuracy": {
+    "ranking_top1_accuracy": 76.3,
+    "total_evaluated": 5355
+  }
+}

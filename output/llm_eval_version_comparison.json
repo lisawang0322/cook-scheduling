@@ -1,0 +1,65 @@
+{
+  "versions": {
+    "v0.1": "llm_v0.1_zero_shot",
+    "v0.2": "llm_v0.2_zero_shot"
+  },
+  "model": "claude-sonnet-4-6",
+  "eval_set_version": "v0.1",
+  "overall": {
+    "v0.1": 50.0,
+    "v0.2": 64.0,
+    "delta": 14.0
+  },
+  "ranking_accuracy": {
+    "v0.1": 45.2,
+    "v0.2": 61.9
+  },
+  "refusal_accuracy": {
+    "v0.1": 75.0,
+    "v0.2": 75.0
+  },
+  "kendall_tau": {
+    "v0.1": 0.381,
+    "v0.2": 0.4762
+  },
+  "by_category": {
+    "OOS": {
+      "v0.1": 100.0,
+      "v0.2": 100.0
+    },
+    "adversarial": {
+      "v0.1": 33.3,
+      "v0.2": 33.3
+    },
+    "edge": {
+      "v0.1": 41.7,
+      "v0.2": 66.7
+    },
+    "modal": {
+      "v0.1": 46.7,
+      "v0.2": 60.0
+    }
+  },
+  "by_eval_tag": {
+    "OOS": {
+      "v0.1": 100.0,
+      "v0.2": 100.0
+    },
+    "accuracy": {
+      "v0.1": 46.7,
+      "v0.2": 60.0
+    },
+    "adversarial": {
+      "v0.1": 33.3,
+      "v0.2": 33.3
+    },
+    "divergence": {
+      "v0.1": 0.0,
+      "v0.2": 0.0
+    },
+    "edge_case": {
+      "v0.1": 41.7,
+      "v0.2": 66.7
+    }
+  }
+}
