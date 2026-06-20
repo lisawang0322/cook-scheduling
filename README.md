@@ -1,6 +1,8 @@
-# 7-Eleven Hot Food Cook Sequencing System — Prototype
+# 7-Eleven Hot Food Cook Sequencing System — Sprint 1 Complete
 
-A 12-week prototyping project to build and validate an AI system that helps store associates decide which hot food item to cook first during overlapping daypart windows.
+An AI system that helps store associates decide which hot food item to cook first during overlapping daypart windows. Built across Weeks 1–9 using a three-tier model stack (rule-based → ML → LLM benchmark) with a reproducible evaluation harness.
+
+> **Sprint 1 Status (Week 9):** All deliverables complete. v1 71.8% top-1, v2.2 74.3% (honest temporal holdout), LLM v0.2 64.0% (associate-voice framing, 50-example shared eval). See `SPRINT1_SUMMARY.md` for full breakdown.
 
 ---
 
@@ -70,9 +72,18 @@ The system generates this schedule by:
 3. Determining the optimal cook order to minimize waste and missed dayparts
 4. Explaining the recommendation in plain language ("Cook wings now because they expire soonest")
 
-### Why Predictive ML (Not LLM, Multimodal, or Agentic)
+### Three-Tier Model Stack
 
-This is a **classification task**: given a scenario (features), predict the correct rank order for items. Outputs are deterministic rankings and scores, not generated text. The model is narrow and well-scoped (cook sequencing only), trained on outcome labels, and measured by accuracy metrics. Predictive ML fits this constraint-satisfaction problem better than broader AI approaches that would introduce hallucination risk or unnecessary complexity.
+| Tier | Model | Role | Accuracy (shared eval) |
+|---|---|---|---|
+| Floor | `AssociateBaseline` | Simulates realistic (flawed) associate behavior | 52.4% |
+| ML v1 | Rule-based heuristic | Urgency × demand_density × waste_penalty | 78.6% |
+| ML v2.2 | Pairwise GBM (temporal split) | Learned from labeled historical data | 78.6% |
+| Ceiling | LLM v0.2 (claude-sonnet-4-6) | Idealized associate intuition, no formulas | 64.0% |
+
+**Why predictive ML as primary model:** This is a classification task with deterministic outputs — correct rank order given a scenario. Predictive ML is narrow, well-scoped, and measured by accuracy metrics. It fits this constraint-satisfaction problem without hallucination risk.
+
+**Why LLM as benchmark (not primary model):** The LLM serves as the *idealized-associate ceiling* — testing whether an LLM reasoning like an experienced associate converges on the same rankings as domain-expert labels. Where LLM and ML agree → label is intuitive. Where they diverge → investigate the label.
 
 ### Agency Level: Augmentation
 
@@ -613,9 +624,9 @@ v2.2 (pairwise + temporal + weights):      74.3%  (honest temporal test)
 
 ---
 
-### WEEK 8–9: Demo & Iteration (Prototype Integration)
+### WEEK 8–9: Demo, LLM Benchmark & Evaluation ✅
 
-**Objective:** Build a working Streamlit demo for business stakeholders.
+#### Streamlit Demo
 
 **How to Run:**
 ```bash
@@ -627,27 +638,53 @@ streamlit run app/app.py
 
 | Page | What It Shows |
 |------|---------------|
-| 📊 Scenario Comparison | Pick a real scenario → see Associate vs v1 vs v2.2 side-by-side with plain-language explanations |
-| 📈 Impact Dashboard | Aggregate KPIs: accuracy by store/hour, projected waste reduction, fleet-wide savings |
+| 📊 Scenario Comparison | Pick a scenario → see Associate vs v1 vs v2.2 side-by-side with plain-language explanations |
+| 📈 Impact Dashboard | Aggregate KPIs: accuracy by store/hour, projected waste reduction |
 | 🎛️ What-If Simulator | Adjust store type, hour, demand → see recommendation change in real-time |
 
-**Demo Workflow:**
-1. Start with **Impact Dashboard** — show the big picture (19pp improvement, projected savings)
-2. Move to **Scenario Comparison** — walk through 2–3 story scenarios showing where ML beats the associate
-3. End with **What-If Simulator** — let audience play with inputs interactively
+#### LLM Benchmark (Sprint 1 Eval Plan)
 
-**Story Scenarios (pre-loaded):**
-- Monday 6 AM urban → baked goods should go first (morning rush), associate would pick pizza
-- Friday 12 PM suburban → pizza should go first (lunch peak), ML and v1 agree
-- Saturday 6 PM highway → wings demand peaks, ML catches this
-- Wednesday 2 PM urban → low demand across the board, ML handles tie-breaking
-- Sunday 8 AM suburban → weekend morning, baked goods priority
+**Setup:**
+```bash
+export ANTHROPIC_API_KEY=your_key
+python notebooks/week9_llm_eval_runner.py --prompt-version=v0.1
+python notebooks/week9_llm_eval_runner.py --prompt-version=v0.2
+python scripts/compare_llm_versions.py v0.1 v0.2
+```
 
-**Success Criteria:**
-- ✅ App runs end-to-end with `streamlit run app/app.py`
-- ✅ All 3 pages functional
-- ✅ v2.2 outperforms associate on >70% of displayed scenarios
-- ✅ Explanations are plain language (no technical jargon)
+**Results:**
+
+| Comparator | Overall Top-1 | Ranking | Refusal (OOS+adv) | Kendall τ |
+|---|---|---|---|---|
+| associate_floor | 52.4% | 52.4% | n/a | 0.484 |
+| v1_rules | 78.6% | 78.6% | n/a | 0.730 |
+| v2_2_ml | 78.6% | 78.6% | n/a | 0.794 |
+| llm_v0.1_zero_shot | 50.0% | 45.2% | 75.0% | 0.381 |
+| **llm_v0.2_zero_shot** | **64.0%** | **61.9%** | **75.0%** | **0.476** |
+
+**Category breakdown (v0.2):**
+| Category | v0.1 | v0.2 | Δ |
+|---|---|---|---|
+| modal (30) | 46.7% | 60.0% | +13.3pp |
+| edge (12) | 41.7% | 66.7% | +25.0pp |
+| OOS (5) | 100.0% | 100.0% | 0 |
+| adversarial (3) | 33.3% | 33.3% | 0 |
+| divergence (n=4) | 0.0% | 0.0% | open question |
+
+**Open question — divergence cases:** The LLM consistently ranks high-demand baked_goods above pizza/wings even when baked_goods has a 23hr window. This may reflect genuine associate intuition that diverges from the formula. Requires field validation before treating as a prompt failure.
+
+**Eval harness features:**
+- `--prompt-version=vX.Y` selects prompt; outputs `llm_eval_vX.Y_report.json` + `_predictions.json`
+- OOS/adversarial examples scored for correct refusal (not just ranking)
+- `accuracy_by_category` breakdown (modal/edge/OOS/adversarial)
+- `--no-llm` flag for dry-run against ML baselines only
+
+**Deliverables:**
+- `prompts/v0.1_system_prompt.md`, `prompts/v0.2_system_prompt.md`
+- `data/llm_eval_set_v0.1.json` — 50 examples (modal 30 / edge 12 / OOS 5 / adv 3)
+- `output/llm_eval_v0.1_report.json`, `output/llm_eval_v0.2_report.json`
+- `output/llm_eval_version_comparison.json`
+- `SPRINT1_SUMMARY.md`
 
 ---
 
@@ -745,60 +782,58 @@ streamlit run app/app.py
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Food Planner Output                                      │
-│ (Forecast: quantities, hold times, demand windows)     │
+│ (Forecast: quantities, hold times, demand windows)      │
 └──────────────────┬──────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────┐
 │ Feature Engineering                                      │
-│ (urgency_gap, inventory_gap, time_of_day, store_type)  │
-└──────────────────┬──────────────────────────────────────┘
-                   │
-        ┌──────────┴──────────┐
-        ▼                     ▼
-    ┌────────┐           ┌────────┐
-    │ v1     │           │ v2     │
-    │ Rules  │           │ ML     │
-    │ Based  │           │ Model  │
-    └────┬───┘           └───┬────┘
-         │                   │
-         └────────┬──────────┘
-                  ▼
-    ┌─────────────────────────────┐
-    │ Template Explanations       │
-    │ (Plain-language reasoning)  │
-    └────────────┬────────────────┘
-                 │
-                 ▼
-    ┌─────────────────────────────┐
-    │ Associate UI                │
-    │ (Ranked cook sequence)      │
-    └─────────────────────────────┘
+│ (urgency, demand_density, hold_time, store_type, hour)  │
+└──────┬──────────────────┬──────────────────┬────────────┘
+       │                  │                  │
+       ▼                  ▼                  ▼
+  ┌─────────┐       ┌──────────┐      ┌───────────┐
+  │   v1    │       │  v2.2    │      │ LLM       │
+  │  Rules  │       │  ML      │      │ Benchmark │
+  │  71.8%  │       │  74.3%   │      │ (ceiling) │
+  └────┬────┘       └────┬─────┘      └─────┬─────┘
+       │                 │                  │
+       └────────┬─────────┘                 │
+                ▼                           │
+   ┌─────────────────────────┐     ┌────────▼────────┐
+   │ Associate UI            │     │ Eval Harness    │
+   │ (Ranked cook sequence)  │     │ (50-ex shared   │
+   │ Streamlit app           │     │  eval set)      │
+   └─────────────────────────┘     └─────────────────┘
 ```
+
+**Two-tier evaluation:**
+- **ML holdout (1,747 scenarios, temporal split ≥ 2025-05-01):** Authoritative accuracy for v1 and v2.2 reported in isolation.
+- **50-example shared eval:** Side-by-side comparison of all four comparators (associate floor → v1 → v2.2 → LLM) on identical inputs.
 
 ### Data Flow
 
 ```
-1. Generate Synthetic Data (Week 1–2)
+1. Generate Synthetic Data (Week 1–2)  ✅
    └─> Cook logs + POS sales + Write-off logs
 
-2. Validate Quality (Week 2)
+2. Validate Quality (Week 2)  ✅
    └─> Data quality report (high/medium/low confidence)
 
-3. Build v1 (Week 3–4)
-   └─> Rule-based ranking (simple, fast, no training)
+3. Build v1 (Week 3–4)  ✅
+   └─> Rule-based ranking — 71.8% top-1 (6,480 decision points)
 
-4. Label Data (Week 5–6)
-   └─> Scenario features → optimal cook order
+4. Label Data (Week 5–6)  ✅
+   └─> 5,290 labeled decision-point scenarios
 
-5. Train v2 (Week 7)
-   └─> RandomForest learns patterns from labeled data
+5. Train v2 → v2.2 (Week 7)  ✅
+   └─> Pairwise GBM — 74.3% honest test (temporal split)
 
-6. Evaluate (Week 8–11)
-   └─> Test on holdout set, measure accuracy
+6. LLM Benchmark (Week 8–9)  ✅
+   └─> 50-example shared eval; v0.1 50% → v0.2 64% top-1
 
-7. Demo (Week 12)
-   └─> Present v1 vs. v2 comparison to stakeholders
+7. Demo (Streamlit, Week 8)  ✅
+   └─> Associate vs v1 vs v2.2 side-by-side; 3 pages
 ```
 
 ---
@@ -948,36 +983,45 @@ For the 15,308 high-confidence scenarios (66.4% of data):
 
 ### Prerequisites
 
-- Python 3.10+ (uses `X | Y` union type syntax)
-- No external dependencies for Week 1–2 (stdlib only: json, os, random, uuid, datetime, collections)
-- Future weeks will require: scikit-learn, pandas, numpy
+```bash
+pip install -r requirements.txt   # scikit-learn, numpy, pandas, streamlit, anthropic
+```
 
-### Quick Start
+Python 3.10+ required (uses `X | Y` union type syntax).
 
-1. **Run the data generation + validation pipeline**
-   ```bash
-   python3 notebooks/week1_data_generation.py
-   ```
+### Run the Streamlit Demo
 
-2. **Review the quality report**
-   ```bash
-   cat output/quality_report.json
-   ```
+```bash
+streamlit run app/app.py
+```
 
-3. **Inspect raw data**
-   ```bash
-   python3 -c "import json; d=json.load(open('data/cook_logs.json')); print(len(d), 'cook events'); print(json.dumps(d[0], indent=2))"
-   ```
+### Run the Eval Harness (dry run — no LLM)
 
-### Next Steps (Week 3+)
+```bash
+python notebooks/week9_llm_eval_runner.py --no-llm
+```
 
-1. Build v1 ranking system (`src/cook_scheduler.py`)
-2. Test v1 on all scenarios
-3. Label data for v2 training (`data/labeled_training_set.json`)
-4. Train v2 model
-5. Evaluate and iterate
-6. Build demo
-7. Present findings
+### Run the LLM Evaluation (requires Anthropic key)
+
+```bash
+export ANTHROPIC_API_KEY=your_key
+python notebooks/week9_llm_eval_runner.py --prompt-version=v0.1
+python notebooks/week9_llm_eval_runner.py --prompt-version=v0.2
+python scripts/compare_llm_versions.py v0.1 v0.2
+```
+
+### Rebuild the Eval Set
+
+```bash
+python scripts/build_eval_set_v0_1.py
+# Regenerates data/llm_eval_set_v0.1.json + .csv
+```
+
+### Retrain v2.2 Model
+
+```bash
+python notebooks/week7_model_training.py
+```
 
 ---
 
@@ -985,72 +1029,77 @@ For the 15,308 high-confidence scenarios (66.4% of data):
 
 ```
 7eleven-cook-scheduling/
-├── data/                               # Generated data (gitignored)
-│   ├── cook_logs.json                  # ~23,000 cook events (initial + restocks)
-│   ├── pos_sales.json                  # ~164,000 individual sale records
+├── data/
+│   ├── cook_logs.json                  # ~23,000 cook events
+│   ├── pos_sales.json                  # ~164,000 sale records
 │   ├── write_off_logs.json             # ~19,600 write-off entries
-│   └── labeled_training_set.json       # ~5,290 labeled decision-point scenarios (Week 5)
+│   ├── labeled_training_set.json       # 5,290 labeled decision-point scenarios
+│   ├── llm_eval_set_v0.1.json          # 50-example shared eval set
+│   ├── llm_eval_set_v0.1.csv           # Same, CSV format
+│   └── interview_notes.md              # 15 simulated associate vignettes
+│
+├── prompts/
+│   ├── v0.1_system_prompt.md          # LLM prompt v0.1 (initial benchmark)
+│   └── v0.2_system_prompt.md          # LLM prompt v0.2 (associate-voice tightening)
 │
 ├── src/
-│   ├── __init__.py
-│   ├── synthetic_data_generator.py     # SyntheticDataGenerator class
-│   ├── data_validator.py               # DataValidator class
-│   ├── cook_scheduler.py               # v1 priority-score ranking (✅ Week 3-4)
-│   └── data_labeler.py                 # DataLabeler class (✅ Week 5-6)
+│   ├── cook_scheduler.py               # v1 rule-based ranker + AssociateBaseline
+│   ├── data_labeler.py                 # Composite priority labeling
+│   ├── pairwise_trainer.py             # v2.1/v2.2 pairwise GBM training
+│   ├── llm_ranker.py                   # LLMRanker (shared, uses ANTHROPIC_MODEL env)
+│   ├── synthetic_data_generator.py
+│   └── data_validator.py
 │
 ├── notebooks/
-│   ├── week1_data_generation.py        # Generate + validate data (✅ implemented)
-│   ├── week2_analysis.py               # Explore patterns (placeholder)
-│   ├── week3_v1_scheduler.py           # v1 scheduler eval (✅ implemented)
-│   └── week5_data_labeling.py          # Labeling pipeline (✅ implemented)
+│   ├── week1_data_generation.py
+│   ├── week3_v1_scheduler.py
+│   ├── week5_data_labeling.py
+│   ├── week7_model_training.py         # v2 → v2.1 → v2.2 full pipeline
+│   ├── week8_llm_benchmark.py          # LLM ranker standalone benchmark
+│   └── week9_llm_eval_runner.py        # ⭐ Main eval harness (all 4 comparators)
 │
-├── output/                             # Reports and artifacts
-│   └── quality_report.json             # Data quality assessment (✅ generated)
-│
-└── README.md                           # This file
-```
-
-**Implemented additions:**
-```
-├── app/                               # Streamlit demo app (Week 8-9)
-│   ├── app.py                         # Main entry point
-│   ├── utils.py                       # Model loading, comparison engine
-│   └── pages/
-│       ├── 1_Scenario_Comparison.py   # Live scenario comparison
-│       ├── 2_Impact_Dashboard.py      # Aggregate impact metrics
-│       └── 3_What_If_Simulator.py     # Interactive what-if tool
+├── scripts/
+│   ├── build_eval_set_v0_1.py          # Builds llm_eval_set_v0.1.json/.csv
+│   └── compare_llm_versions.py         # Diffs two llm_eval_vX.Y_report.json files
 │
 ├── models/
-│   ├── v2_ranking_model.pkl           # v2 multiclass model (Week 7)
-│   ├── v2_1_pairwise_model.pkl        # v2.1 pairwise model
-│   └── v2_2_pairwise_temporal.pkl     # v2.2 final model (temporal + weights)
+│   ├── v2_ranking_model.pkl            # v2 multiclass baseline
+│   ├── v2_1_pairwise_model.pkl         # v2.1 pairwise (no temporal split)
+│   └── v2_2_pairwise_temporal.pkl      # v2.2 final model — use this
 │
 ├── output/
-│   ├── v1_eval_report.json            # v1 accuracy
-│   ├── v2_training_report.json        # v2 training report
-│   ├── v2_1_pairwise_report.json      # v2.1 report
-│   ├── v2_2_temporal_report.json      # v2.2 report (honest temporal eval)
-│   └── feature_importance.json        # Feature importance
+│   ├── v1_eval_report.json             # v1: 71.8% top-1 (6,480 pts)
+│   ├── v2_2_temporal_report.json       # v2.2: 74.3% honest test
+│   ├── llm_eval_v0.1_report.json       # LLM v0.1: 50.0% top-1
+│   ├── llm_eval_v0.2_report.json       # LLM v0.2: 64.0% top-1
+│   ├── llm_eval_v0.1_predictions.json  # Per-example predictions
+│   ├── llm_eval_v0.2_predictions.json
+│   ├── llm_eval_version_comparison.json
+│   └── feature_importance.json
 │
-└── notebooks/
-    ├── week3_v1_scheduler.py          # v1 scheduler evaluation
-    ├── week5_data_labeling.py         # Labeling pipeline
-    └── week7_model_training.py        # Full training pipeline (v2→v2.2)
+├── app/                                # Streamlit demo
+│   ├── app.py
+│   └── pages/
+│       ├── 1_Scenario_Comparison.py
+│       ├── 2_Impact_Dashboard.py
+│       └── 3_What_If_Simulator.py
+│
+├── SPRINT1_SUMMARY.md                  # 1-page Sprint 1 results summary
+├── ARCHITECTURE_DECISIONS.md           # Design decisions + two-tier eval strategy
+└── requirements.txt
 ```
 
 ---
 
 ## TIMELINE SUMMARY
 
-| Week | Phase | Deliverable | Success Metric |
+| Week | Phase | Deliverable | Actual Result |
 |------|-------|---|---|
 | 1–2 | Data Generation | ~23,000 cook events, quality report | ✅ 66.4% high, 90.0% usable |
-| 3–4 | v1 Baseline | Rule-based ranking | v1 works on >90% scenarios |
-| 5–6 | Data Labeling | ~5,290 labeled scenarios | All high+medium, 0 contradictions |
-| 7 | Model Training | Trained v2 model | ≥75% cross-val accuracy |
-| 8–9 | Demo & Iteration | Working demo, v1 vs. v2 comparison | v2 beats v1 on >70% |
-| 10–11 | Evaluation | Detailed eval report, documentation | Test accuracy ≥75% |
-| 12 | Presentation | Slides, demo, final report | Panel approval, clear limitations |
+| 3–4 | v1 Baseline | Rule-based ranker | ✅ 71.8% top-1 (6,480 decision pts) |
+| 5–6 | Data Labeling | 5,290 labeled scenarios | ✅ All high+medium, 0 contradictions |
+| 7 | Model Training | v2 → v2.2 pairwise GBM | ✅ 74.3% honest test (temporal split) |
+| 8–9 | Demo + LLM Eval | Streamlit app, 50-ex eval, v0.1→v0.2 | ✅ Sprint 1 complete (⭐ SPRINT1_SUMMARY.md) |
 
 ---
 
@@ -1076,5 +1125,5 @@ For the 15,308 high-confidence scenarios (66.4% of data):
 
 ---
 
-**Last Updated:** May 25, 2026  
-**Project Status:** Week 1–2 complete (data generation + validation). Ready for Week 3 (v1 rule-based scheduler).
+**Last Updated:** June 20, 2026  
+**Project Status:** Sprint 1 complete (Weeks 1–9). v1 71.8% • v2.2 74.3% • LLM v0.2 64.0%. See [`SPRINT1_SUMMARY.md`](SPRINT1_SUMMARY.md).
