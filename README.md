@@ -1029,6 +1029,18 @@ Python 3.10+ required (uses `X | Y` union type syntax).
 streamlit run app/app.py
 ```
 
+### Run the Lovable UI Frontend (Docker)
+
+The React frontend (lovable-UI) is containerized with Bun:
+
+```bash
+cd "lovable-UI/Hot Food Hero"
+docker build -t hot-food-hero .
+docker run -p 8080:8080 hot-food-hero
+```
+
+Then open http://localhost:8080 in your browser.
+
 ### Run the Eval Harness (dry run — no LLM)
 
 ```bash
