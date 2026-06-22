@@ -1,20 +1,20 @@
 {
   "metadata": {
     "prompt_version": "v0.2",
-    "llm_model": "claude-sonnet-4-6",
-    "run_date": "2026-06-20T16:18:06"
+    "llm_model": "skipped (ml-only re-run)",
+    "run_date": "2026-06-21T21:24:43"
   },
   "predictions": {
     "associate_floor": [
       {
         "eval_id": "log_001",
-        "correct": false,
+        "correct": true,
         "outcome": "ranking",
         "pred": [
+          "baked_goods",
           "pizza",
           "wings_2h",
-          "wings_4h",
-          "baked_goods"
+          "wings_4h"
         ]
       },
       {
@@ -23,9 +23,9 @@
         "outcome": "ranking",
         "pred": [
           "pizza",
+          "wings_4h",
           "baked_goods",
-          "wings_2h",
-          "wings_4h"
+          "wings_2h"
         ]
       },
       {
@@ -148,10 +148,10 @@
         "correct": false,
         "outcome": "ranking",
         "pred": [
+          "wings_2h",
           "wings_4h",
           "baked_goods",
-          "pizza",
-          "wings_2h"
+          "pizza"
         ]
       },
       {
@@ -260,8 +260,8 @@
         "outcome": "ranking",
         "pred": [
           "pizza",
-          "wings_2h",
           "baked_goods",
+          "wings_2h",
           "wings_4h"
         ]
       },
@@ -332,9 +332,9 @@
         "outcome": "ranking",
         "pred": [
           "pizza",
-          "wings_2h",
           "baked_goods",
-          "wings_4h"
+          "wings_4h",
+          "wings_2h"
         ]
       },
       {
@@ -349,23 +349,23 @@
       },
       {
         "eval_id": "int_V03",
-        "correct": true,
+        "correct": false,
         "outcome": "ranking",
         "pred": [
-          "baked_goods",
+          "wings_2h",
           "pizza",
-          "wings_2h"
+          "baked_goods"
         ]
       },
       {
         "eval_id": "int_V04",
-        "correct": true,
+        "correct": false,
         "outcome": "ranking",
         "pred": [
-          "pizza",
-          "wings_4h",
+          "baked_goods",
           "wings_2h",
-          "baked_goods"
+          "pizza",
+          "wings_4h"
         ]
       },
       {
@@ -380,13 +380,13 @@
       },
       {
         "eval_id": "int_V06",
-        "correct": false,
+        "correct": true,
         "outcome": "ranking",
         "pred": [
+          "baked_goods",
           "pizza",
           "wings_2h",
-          "wings_4h",
-          "baked_goods"
+          "wings_4h"
         ]
       },
       {
@@ -414,8 +414,8 @@
         "outcome": "ranking",
         "pred": [
           "pizza",
-          "wings_2h",
           "baked_goods",
+          "wings_2h",
           "wings_4h"
         ]
       },
@@ -1073,16 +1073,7 @@
       },
       {
         "eval_id": "log_013",
-        "correct": true,
-        "outcome": "ranking",
-        "pred": [
-          "pizza",
-          "wings_2h"
-        ]
-      },
-      {
-        "eval_id": "log_014",
-        "correct": true,
+        "correct": false,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1090,34 +1081,43 @@
         ]
       },
       {
-        "eval_id": "log_015",
-        "correct": true,
-        "outcome": "ranking",
-        "pred": [
-          "pizza",
-          "wings_2h",
-          "wings_4h",
-          "baked_goods"
-        ]
-      },
-      {
-        "eval_id": "log_016",
-        "correct": true,
-        "outcome": "ranking",
-        "pred": [
-          "wings_2h",
-          "pizza",
-          "baked_goods",
-          "wings_4h"
-        ]
-      },
-      {
-        "eval_id": "log_017",
+        "eval_id": "log_014",
         "correct": false,
         "outcome": "ranking",
         "pred": [
           "pizza",
           "wings_2h"
+        ]
+      },
+      {
+        "eval_id": "log_015",
+        "correct": false,
+        "outcome": "ranking",
+        "pred": [
+          "baked_goods",
+          "pizza",
+          "wings_2h",
+          "wings_4h"
+        ]
+      },
+      {
+        "eval_id": "log_016",
+        "correct": false,
+        "outcome": "ranking",
+        "pred": [
+          "baked_goods",
+          "pizza",
+          "wings_2h",
+          "wings_4h"
+        ]
+      },
+      {
+        "eval_id": "log_017",
+        "correct": true,
+        "outcome": "ranking",
+        "pred": [
+          "wings_2h",
+          "pizza"
         ]
       },
       {
@@ -1234,11 +1234,11 @@
       },
       {
         "eval_id": "con_005",
-        "correct": false,
+        "correct": true,
         "outcome": "ranking",
         "pred": [
-          "pizza",
           "wings_2h",
+          "pizza",
           "wings_4h"
         ]
       },
@@ -1264,21 +1264,21 @@
       },
       {
         "eval_id": "con_008",
-        "correct": false,
+        "correct": true,
         "outcome": "ranking",
         "pred": [
-          "pizza",
           "wings_2h",
+          "pizza",
           "wings_4h"
         ]
       },
       {
         "eval_id": "int_V01",
-        "correct": false,
+        "correct": true,
         "outcome": "ranking",
         "pred": [
-          "pizza",
           "wings_2h",
+          "pizza",
           "wings_4h",
           "baked_goods"
         ]
@@ -1356,11 +1356,11 @@
       },
       {
         "eval_id": "int_V09",
-        "correct": false,
+        "correct": true,
         "outcome": "ranking",
         "pred": [
-          "wings_2h",
           "pizza",
+          "wings_2h",
           "wings_4h",
           "baked_goods"
         ]

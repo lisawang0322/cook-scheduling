@@ -573,40 +573,53 @@ def main() -> None:
         print()
 
     # --- Dump per-example predictions ---
-    if not NO_LLM:
-        preds_out = {
-            "metadata": {
-                "prompt_version": PROMPT_VERSION,
-                "llm_model": LLM_MODEL,
-                "run_date": time.strftime("%Y-%m-%dT%H:%M:%S"),
-            },
-            "predictions": {
-                name: result["per_example"]
-                for name, result in results.items()
-            },
-        }
-        os.makedirs(os.path.dirname(PREDICTIONS_PATH), exist_ok=True)
-        with open(PREDICTIONS_PATH, "w") as f:
-            json.dump(preds_out, f, indent=2)
-        print(f"\n  Predictions saved → {PREDICTIONS_PATH}")
+    # Always save ML predictions; when --no-llm, merge LLM predictions from existing file.
+    existing_llm_preds: dict = {}
+    if NO_LLM and os.path.exists(PREDICTIONS_PATH):
+        try:
+            with open(PREDICTIONS_PATH) as f:
+                existing = json.load(f)
+            for name, preds in existing.get("predictions", {}).items():
+                if name not in ("associate_floor", "v1_rules", "v2_2_ml"):
+                    existing_llm_preds[name] = preds
+        except Exception:
+            pass
+
+    ml_predictions = {
+        name: result["per_example"]
+        for name, result in results.items()
+    }
+    preds_out = {
+        "metadata": {
+            "prompt_version": PROMPT_VERSION,
+            "llm_model": LLM_MODEL if not NO_LLM else "skipped (ml-only re-run)",
+            "run_date": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        },
+        "predictions": {**ml_predictions, **existing_llm_preds},
+    }
+    os.makedirs(os.path.dirname(PREDICTIONS_PATH), exist_ok=True)
+    with open(PREDICTIONS_PATH, "w") as f:
+        json.dump(preds_out, f, indent=2)
+    print(f"\n  Predictions saved → {PREDICTIONS_PATH}")
 
     # --- Load canonical holdout reference numbers ---
     def _load_holdout_ref() -> dict:
         try:
-            v1_path  = os.path.join(PROJECT_ROOT, "output", "v1_eval_report.json")
+            lab_path = os.path.join(PROJECT_ROOT, "output", "labeling_report.json")
             v22_path = os.path.join(PROJECT_ROOT, "output", "v2_2_temporal_report.json")
-            with open(v1_path)  as f: v1r  = json.load(f)
+            with open(lab_path) as f: labr = json.load(f)
             with open(v22_path) as f: v22r = json.load(f)
             return {
                 "note": (
-                    "Full-set holdout numbers. Use these as authoritative ML model scores; "
-                    "the 50-example shared eval is for cross-model comparison only."
+                    "Accuracy vs composite priority labels (data_labeler.py). "
+                    "v1 = label agreement on full dataset; v2.2 = temporal holdout test (>=2025-05-01). "
+                    "See output/v1_eval_report.json for v1 write-off optimality."
                 ),
-                "v1_rules_top1_pct":  v1r["summary"]["top1_accuracy_pct"],
-                "v1_rules_n_decisions": v1r["summary"]["total_decision_points"],
-                "v2_2_ml_top1_pct":   v22r["temporal_split"]["test_top1_accuracy"],
-                "v2_2_ml_n_scenarios": v22r["temporal_split"]["test_scenarios"],
-                "temporal_cutoff":    v22r["temporal_split"]["cutoff_date"],
+                "v1_rules_top1_pct":   labr["v1_agreement_pct"],
+                "v1_rules_n_decisions": labr["total_labeled_scenarios"],
+                "v2_2_ml_top1_pct":    v22r["temporal_split"]["test_top1_accuracy"],
+                "v2_2_ml_n_scenarios":  v22r["temporal_split"]["test_scenarios"],
+                "temporal_cutoff":     v22r["temporal_split"]["cutoff_date"],
             }
         except Exception:
             return {"note": "Could not load holdout reports — run week3/week7 notebooks first."}
