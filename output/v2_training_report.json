@@ -2,107 +2,387 @@
   "cross_validation": {
     "cv_folds": 5,
     "scores": [
-      0.7348,
-      0.718,
-      0.6863,
-      0.6685,
-      0.7068
+      0.5358,
+      0.582,
+      0.6143,
+      0.6051,
+      0.5486
     ],
-    "mean_accuracy": 70.3,
-    "std_accuracy": 2.3
+    "mean_accuracy": 57.7,
+    "std_accuracy": 3.1
   },
   "training_set": {
-    "n_samples": 5355,
+    "n_samples": 2164,
     "n_features": 49,
     "class_distribution": {
-      "pizza": 3209,
-      "wings_2h": 1859,
-      "baked_goods": 286,
-      "wings_4h": 1
+      "chicken_sandwich": 945,
+      "wings_bone_in": 451,
+      "breakfast_sandwich": 347,
+      "wings_boneless": 218,
+      "chicken_strip": 110,
+      "chicken_bite": 40,
+      "quesadilla": 13,
+      "croissant": 10,
+      "garlic_knot": 9,
+      "hash_brown": 6,
+      "jamaican_patty": 5,
+      "empanada": 5,
+      "potato_wedge": 3,
+      "chimichanga": 2
     }
   },
   "classification_report": {
-    "baked_goods": {
-      "precision": 0.8554216867469879,
-      "recall": 0.993006993006993,
-      "f1-score": 0.919093851132686,
-      "support": 286.0
+    "breakfast_sandwich": {
+      "precision": 0.9065743944636678,
+      "recall": 0.7550432276657061,
+      "f1-score": 0.8238993710691824,
+      "support": 347.0
     },
-    "pizza": {
-      "precision": 0.8173794976238968,
-      "recall": 0.7503895294484263,
-      "f1-score": 0.7824532900081235,
-      "support": 3209.0
+    "chicken_bite": {
+      "precision": 0.1297709923664122,
+      "recall": 0.425,
+      "f1-score": 0.19883040935672514,
+      "support": 40.0
     },
-    "wings_2h": {
-      "precision": 0.6258470474346564,
-      "recall": 0.6955352339967724,
-      "f1-score": 0.6588535031847134,
-      "support": 1859.0
+    "chicken_sandwich": {
+      "precision": 0.966501240694789,
+      "recall": 0.8243386243386244,
+      "f1-score": 0.8897772701313535,
+      "support": 945.0
     },
-    "wings_4h": {
-      "precision": 0.09090909090909091,
+    "chicken_strip": {
+      "precision": 0.24581005586592178,
+      "recall": 0.4,
+      "f1-score": 0.3044982698961938,
+      "support": 110.0
+    },
+    "chimichanga": {
+      "precision": 0.08333333333333333,
       "recall": 1.0,
-      "f1-score": 0.16666666666666666,
-      "support": 1.0
+      "f1-score": 0.15384615384615385,
+      "support": 2.0
+    },
+    "croissant": {
+      "precision": 0.2903225806451613,
+      "recall": 0.9,
+      "f1-score": 0.43902439024390244,
+      "support": 10.0
+    },
+    "empanada": {
+      "precision": 0.14285714285714285,
+      "recall": 0.8,
+      "f1-score": 0.24242424242424243,
+      "support": 5.0
+    },
+    "garlic_knot": {
+      "precision": 0.11538461538461539,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.19672131147540983,
+      "support": 9.0
+    },
+    "hash_brown": {
+      "precision": 0.11538461538461539,
+      "recall": 1.0,
+      "f1-score": 0.20689655172413793,
+      "support": 6.0
+    },
+    "jamaican_patty": {
+      "precision": 0.13793103448275862,
+      "recall": 0.8,
+      "f1-score": 0.23529411764705882,
+      "support": 5.0
+    },
+    "potato_wedge": {
+      "precision": 0.09375,
+      "recall": 1.0,
+      "f1-score": 0.17142857142857143,
+      "support": 3.0
+    },
+    "quesadilla": {
+      "precision": 0.09448818897637795,
+      "recall": 0.9230769230769231,
+      "f1-score": 0.17142857142857143,
+      "support": 13.0
+    },
+    "wings_bone_in": {
+      "precision": 0.7037037037037037,
+      "recall": 0.25277161862527714,
+      "f1-score": 0.3719412724306688,
+      "support": 451.0
+    },
+    "wings_boneless": {
+      "precision": 0.4189189189189189,
+      "recall": 0.42660550458715596,
+      "f1-score": 0.42272727272727273,
+      "support": 218.0
     },
     "macro avg": {
-      "precision": 0.597389330678658,
-      "recall": 0.8597329391130479,
-      "f1-score": 0.6317668277480474,
-      "support": 5355.0
+      "precision": 0.317480772648387,
+      "recall": 0.7266787546400251,
+      "f1-score": 0.34490984113067463,
+      "support": 2164.0
     },
     "weighted avg": {
-      "precision": 0.7527846835773406,
-      "recall": 0.7443510737628385,
-      "f1-score": 0.746728063146044,
-      "support": 5355.0
+      "precision": 0.7747522305533044,
+      "recall": 0.6261552680221811,
+      "f1-score": 0.6658604175996912,
+      "support": 2164.0
     }
   },
-  "accuracy": 74.4,
+  "accuracy": 62.6,
   "feature_importance_top10": {
-    "baked_goods_v1_score": 0.07545947473884597,
-    "baked_goods_cooked_qty": 0.07387802701274315,
-    "baked_goods_forecast_demand": 0.0738014138355359,
-    "demand_spread": 0.07083030821990756,
-    "baked_goods_demand_density": 0.06141520215307856,
-    "store_type_encoded": 0.04232738083835274,
-    "wings_4h_v1_score": 0.04091798301837693,
-    "day_of_week_encoded": 0.039793180956630925,
-    "wings_4h_forecast_demand": 0.038655291769325084,
-    "wings_4h_cooked_qty": 0.032095276201700364
+    "decision_hour": 0.49193384657601663,
+    "day_of_week_encoded": 0.2460694160786282,
+    "store_type_encoded": 0.14733229520146437,
+    "num_oven_items": 0.07793052655673591,
+    "is_weekend": 0.03673391558715478,
+    "pizza_present": 0.0,
+    "pizza_forecast_demand": 0.0,
+    "pizza_lcu": 0.0,
+    "pizza_hold_time": 0.0,
+    "pizza_time_remaining": 0.0
   },
   "confusion_matrix": {
     "labels": [
-      "baked_goods",
-      "pizza",
-      "wings_2h",
-      "wings_4h"
+      "breakfast_sandwich",
+      "chicken_bite",
+      "chicken_sandwich",
+      "chicken_strip",
+      "chimichanga",
+      "croissant",
+      "empanada",
+      "garlic_knot",
+      "hash_brown",
+      "jamaican_patty",
+      "potato_wedge",
+      "quesadilla",
+      "wings_bone_in",
+      "wings_boneless"
     ],
     "matrix": [
       [
-        284,
-        1,
-        1,
+        262,
+        4,
+        0,
+        6,
+        0,
+        22,
+        0,
+        0,
+        41,
+        0,
+        0,
+        6,
+        6,
         0
       ],
       [
-        26,
-        2408,
-        772,
-        3
+        2,
+        17,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        5,
+        3,
+        6
       ],
       [
+        9,
+        8,
+        779,
+        13,
+        21,
+        0,
         22,
-        537,
-        1293,
-        7
+        45,
+        4,
+        20,
+        4,
+        7,
+        3,
+        10
+      ],
+      [
+        1,
+        7,
+        15,
+        44,
+        0,
+        0,
+        1,
+        1,
+        0,
+        2,
+        1,
+        11,
+        8,
+        19
       ],
       [
         0,
         0,
         0,
-        1
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        9,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        6,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        12,
+        0,
+        0
+      ],
+      [
+        12,
+        69,
+        11,
+        85,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        11,
+        55,
+        114,
+        94
+      ],
+      [
+        3,
+        26,
+        1,
+        28,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        31,
+        28,
+        93
       ]
     ]
   }

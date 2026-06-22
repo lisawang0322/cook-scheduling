@@ -1,65 +1,65 @@
 {
-  "total_cook_events": 23061,
+  "total_cook_events": 175051,
   "confidence_breakdown": {
     "high": {
-      "count": 15308,
-      "percentage": 66.4
+      "count": 123482,
+      "percentage": 70.5
     },
     "medium": {
-      "count": 5457,
-      "percentage": 23.7
+      "count": 40642,
+      "percentage": 23.2
     },
     "low": {
-      "count": 2296,
-      "percentage": 10.0
+      "count": 10927,
+      "percentage": 6.2
     }
   },
   "quality_issues": {
     "accurate": {
-      "count": 15308,
-      "percentage": 66.4
+      "count": 123482,
+      "percentage": 70.5
     },
     "gap": {
-      "count": 3471,
-      "percentage": 15.1
+      "count": 26629,
+      "percentage": 15.2
     },
     "counting_error": {
-      "count": 1986,
-      "percentage": 8.6
+      "count": 14013,
+      "percentage": 8.0
     },
     "major_discrepancy": {
-      "count": 2296,
-      "percentage": 10.0
+      "count": 10927,
+      "percentage": 6.2
     }
   },
   "by_store_type": {
     "highway": {
-      "total": 7646,
-      "high": 5169,
-      "medium": 1854,
-      "low": 623,
-      "high_pct": 67.6,
-      "medium_pct": 24.2,
-      "low_pct": 8.1
+      "total": 58250,
+      "high": 41623,
+      "medium": 13408,
+      "low": 3219,
+      "high_pct": 71.5,
+      "medium_pct": 23.0,
+      "low_pct": 5.5
     },
     "suburban": {
-      "total": 7709,
-      "high": 5151,
-      "medium": 1794,
-      "low": 764,
-      "high_pct": 66.8,
-      "medium_pct": 23.3,
-      "low_pct": 9.9
+      "total": 58407,
+      "high": 41177,
+      "medium": 13639,
+      "low": 3591,
+      "high_pct": 70.5,
+      "medium_pct": 23.4,
+      "low_pct": 6.1
     },
     "urban": {
-      "total": 7706,
-      "high": 4988,
-      "medium": 1809,
-      "low": 909,
-      "high_pct": 64.7,
-      "medium_pct": 23.5,
-      "low_pct": 11.8
+      "total": 58394,
+      "high": 40682,
+      "medium": 13595,
+      "low": 4117,
+      "high_pct": 69.7,
+      "medium_pct": 23.3,
+      "low_pct": 7.1
     }
   },
-  "usable_for_training_pct": 90.0
+  "usable_for_training_pct": 93.8
 }

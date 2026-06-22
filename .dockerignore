@@ -1,0 +1,21 @@
+# Python artifacts
+.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+.pytest_cache/
+
+# Frontend (has its own build context)
+7eleven-cook-scheduling/
+
+# Git / IDE
+.git/
+.DS_Store
+*.md
+
+# Notebooks (not needed at runtime)
+notebooks/
+scripts/
+
+# Streamlit pages (not needed for FastAPI)
+app/pages/

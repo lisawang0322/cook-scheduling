@@ -1,6 +1,6 @@
 # Sprint 1 Summary — 7-Eleven Cook Order AI
 
-**Date:** 2026-06-20 | **Author:** Lisa Wang | **Model:** claude-sonnet-4-6
+**Date:** 2026-06-21 | **Author:** Lisa Wang | **Model:** claude-sonnet-4-6
 
 ---
 
@@ -10,7 +10,7 @@ Built an end-to-end AI cook-scheduling system covering all five layers:
 
 | Layer | Component | Status |
 |---|---|---|
-| Data | 1,747-scenario labeled dataset; temporal holdout split (≥ 2025-05-01) | ✅ |
+| Data | 2,164-scenario labeled dataset (28-item); temporal holdout split (≥ 2025-05-01) | ✅ |
 | ML (v1) | Rule-based ranker: urgency × demand_density × waste_penalty | ✅ |
 | ML (v2.2) | Pairwise ranking model; temporal cross-validation | ✅ |
 | LLM | Zero-shot associate framing via Claude; refusal scoring | ✅ |
@@ -22,18 +22,20 @@ Built an end-to-end AI cook-scheduling system covering all five layers:
 
 ## 2. Evaluation Results
 
-### Canonical Holdout (ML models, 1,747 scenarios)
+### Canonical Holdout (ML models, retrained 28-item set)
 | Model | Top-1 | n |
 |---|---|---|
-| v1 rules | 71.8% | 6,480 decision pts |
-| v2.2 ML | **74.3%** | 1,747 scenarios |
+| v1 rules | 58.6% | 2,164 decision pts |
+| v2.2 ML | **68.9%** | 730 scenarios (temporal holdout) |
+
+*Sprint 1 5-item baseline (superseded): v1 71.8%, v2.2 74.3%, n=1,747.*
 
 ### 50-Example Shared Eval (all comparators, same inputs)
 | Comparator | Top-1 | Ranking | Refusal | Kendall τ |
 |---|---|---|---|---|
-| associate_floor | 52.4% | 52.4% | n/a | 0.484 |
+| associate_floor | 52.4% | 52.4% | n/a | 0.436 |
 | v1_rules | 78.6% | 78.6% | n/a | 0.730 |
-| v2_2_ml | 78.6% | 78.6% | n/a | 0.794 |
+| v2_2_ml | **81.0%** | **81.0%** | n/a | **0.762** |
 | **llm_v0.1_zero_shot** | 50.0% | 45.2% | 75.0% | 0.381 |
 | **llm_v0.2_zero_shot** | **64.0%** | **61.9%** | **75.0%** | **0.476** |
 
@@ -74,16 +76,17 @@ Built an end-to-end AI cook-scheduling system covering all five layers:
 
 | Iteration | Approach | Key Change | Result |
 |---|---|---|---|
-| **v1** | Rule-based heuristic | `urgency × demand_density × waste_penalty`; no training | 71.8% top-1 (6,480 decision pts) |
+| **v1** | Rule-based heuristic | `urgency × demand_density × waste_penalty`; no training | Sprint 1: 71.8% (5-item) → **58.6%** (28-item) |
 | **v2** | Multiclass RandomForest | Composite priority labels (urgency + hold_penalty − waste_ratio); 49 features | 64.2% CV — worse than expected; pizza/wings_2h confusion |
-| **v2.1** | Pairwise GBM | Reframed as "A before B?" binary; added historical write-off features by item × hour × store_type | 76.5% top-1 — +12.3pp over v2; but leaked test-period data into historical features |
-| **v2.2** | Pairwise GBM + temporal split + soft labels | Train on days 1–120 only; historical features computed from train partition only; near-tied pairs downweighted (0.33) | **74.3% honest test** — "honesty tax" of −2pp vs v2.1; no data leakage |
+| **v2.1** | Pairwise GBM | Reframed as "A before B?" binary; added historical write-off features by item × hour × store_type | Sprint 1: 76.5% top-1 → **77.1%** (28-item); but leaked test-period data into historical features |
+| **v2.2** | Pairwise GBM + temporal split + soft labels | Train on days 1–120 only; historical features computed from train partition only; near-tied pairs downweighted (0.33) | Sprint 1: **74.3%** (5-item) → **68.9%** (28-item honest test); 5-item shared eval: **81.0%** |
 
 **Key lessons:**
 - **Labeling strategy mattered more than model architecture.** v2 with noisy labels (42% CV) → v2 with composite labels (64% CV) — same model, same features.
 - **Pairwise reframing broke the pizza/wings_2h deadlock.** Multiclass "which of 4?" confused items with identical 2h hold times. Pairwise "A before B?" gave each pair dedicated training signal.
 - **Historical write-off features were the biggest single jump.** `avg_writeoff_by_hour[item][hour]` distinguished items that look identical on instantaneous features. Item B's waste history is the model's strongest signal (importance 0.174).
-- **Temporal split revealed the real generalization gap.** v2.1's 76.5% was inflated because historical features used future data. v2.2's 74.3% is the number to trust.
+- **Temporal split revealed the real generalization gap.** v2.1's 76.5% was inflated because historical features used future data. v2.2's 74.3% (5-item) / 68.9% (28-item) is the number to trust.
+- **Retraining on 28 items generalized better on the Sprint 1 shared eval.** v2.2 scored 81.0% on the 50-example 5-item eval after 28-item retraining (+2.4pp), because the pairwise feature vector is item-ID-agnostic (numerical features only).
 
 ---
 
@@ -100,12 +103,49 @@ Built an end-to-end AI cook-scheduling system covering all five layers:
 
 ---
 
-## 5. Sprint 2 Plan
+## 6. Post-Sprint 1 Delivery (Week 10)
 
-| Priority | Task | Rationale |
-|---|---|---|
-| P1 | **Divergence label validation** — interview 3 experienced associates on baked_goods spike scenarios; determine if formula or LLM is correct | 0% on divergence is a signal to investigate the label, not (only) the prompt |
-| P1 | **Streamlit dashboard** — connect v2.2 model to UI for real-time recommendations | Walking skeleton is code-only; needs UI layer |
-| P2 | **Adversarial hardening** — expand to 6 adversarial examples; test stronger constraint framing | 33.3% adversarial; ADV_03 is the specific failure case |
-| P2 | **Real-world validation** — compare recommendations vs actual write-off outcomes on live POS data | Formula-derived labels may not reflect true waste reduction |
-| P3 | **v0.3 prompt** — chain-of-thought scratchpad ("think through windows before ranking") | May reveal whether LLM reasons correctly but gets confused by high demand numbers |
+Sprint 1 shipped the model stack and eval harness. Week 10 added the production-style UI layer and deployment packaging.
+
+### UI surfaces
+
+| Surface | Location | Status | Notes |
+|---|---|---|---|
+| **Streamlit demo** | `app/app.py` + `app/pages/` | ✅ Complete | Associate tablet, Scenario Comparison, Impact Dashboard, What-If Simulator — all wired to v2.2 |
+| **Hot Food Hero (React)** | `lovable-UI/Hot Food Hero/` | 🟡 Partial | Scenario Simulator + Associate Tablet live; Comparison / Impact / What-If built but nav disabled ("Coming soon") |
+| **FastAPI bridge** | `app/api.py` | ✅ Complete | `/api/rank`, `/api/metrics`, `/api/scenarios`, `/api/log-action`, `/health` |
+| **Docker stack** | `docker-compose.yml` | ✅ Complete | Backend (:8000) + frontend (:5173); `PYTHON_API_URL` wired for container networking |
+
+### Hot Food Hero — current behavior
+
+- **Scenario Simulator** auto-fetches v2.2 rankings on every input change (store type, day, hour, forecast). No manual "Get ML" step.
+- **Live Preview** shows the ML-ranked cook queue (COOK NOW / NEXT / THEN), ML explanation text, and forecast quantities from the daypart allocation engine.
+- **Send to Tablet** pushes the ML-ordered scenario into the Associate Tablet flow; overrides logged via `/api/log-action`.
+- **Fallback:** if the Python backend is unreachable, preview falls back to v1 rule-based order with a toast warning.
+
+### Run locally
+
+```bash
+# Full stack (recommended)
+docker compose up --build -d
+# Frontend → http://localhost:5173  |  API → http://localhost:8000/health
+
+# Streamlit only (no Docker)
+streamlit run app/app.py
+```
+
+---
+
+## 7. Sprint 2 Plan
+
+| Priority | Task | Status | Rationale |
+|---|---|---|---|
+| P1 | **Streamlit + React UI connected to v2.2** | ✅ Done | Was code-only; now live via Streamlit pages + FastAPI + Hot Food Hero |
+| P1 | **Docker deployment packaging** | ✅ Done | Single-command demo for stakeholders |
+| P1 | **Auto ML in Scenario Simulator** | ✅ Done | Preview and tablet flow use v2.2 by default |
+| P1 | **Divergence label validation** — interview 3 experienced associates on baked_goods spike scenarios | 🔲 Open | 0% on divergence is a signal to investigate the label, not (only) the prompt |
+| P2 | **Wire remaining React nav views** — enable Scenario Comparison, Impact Dashboard, What-If in sidebar | 🔲 Open | Components exist; need nav routing + polish |
+| P2 | **Adversarial hardening** — expand to 6 adversarial examples; test stronger constraint framing | 🔲 Open | 33.3% adversarial; ADV_03 is the specific failure case |
+| P2 | **Real-world validation** — compare recommendations vs actual write-off outcomes on live POS data | 🔲 Open | Formula-derived labels may not reflect true waste reduction |
+| P2 | **Model-faithful explanations (SHAP)** — replace template strings with GBM feature attributions | 🔲 Open | See `ARCHITECTURE_DECISIONS.md` Option A |
+| P3 | **v0.3 prompt** — chain-of-thought scratchpad ("think through windows before ranking") | 🔲 Open | May reveal whether LLM reasons correctly but gets confused by high demand numbers |

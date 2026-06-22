@@ -25,10 +25,19 @@ from typing import Any
 class CookSchedulerV1:
     """v1 deterministic priority-score cook scheduler."""
 
-    # Items that use the oven (compete for scheduling)
-    OVEN_ITEMS = {"pizza", "wings_2h", "wings_4h", "baked_goods"}
-    # Items on the roller grill (always cook immediately, no scheduling needed)
-    GRILL_ITEMS = {"taquitos"}
+    # All hot food items that compete for scheduling priority
+    OVEN_ITEMS = {
+        "wings_bone_in", "wings_boneless",
+        "chicken_strip", "chicken_bite", "quesadilla", "chicken_sandwich",
+        "potato_wedge", "waffle_tot", "hash_brown",
+        "empanada", "chimichanga", "jamaican_turnover", "jamaican_patty", "pupusa",
+        "beef_mini_taco", "garlic_knot", "kolache",
+        "croissant", "breakfast_sandwich", "sweet_croissant", "danish",
+        "pizza_slice", "pizza_stuffed",
+        "hot_dog", "sausage", "taquito", "buffalo_roller", "corn_dog",
+    }
+    # Grill items (subset — noted for equipment routing, still scheduled)
+    GRILL_ITEMS = {"hot_dog", "sausage", "taquito", "buffalo_roller", "corn_dog"}
 
     def score_item(self, item: str, forecast_demand: int, lcu: int,
                    hold_time_hours: int, time_remaining_hours: float) -> float:
@@ -185,18 +194,30 @@ class AssociateBaseline:
     and serves as the realistic baseline ("what happens today without a system").
     """
 
-    OVEN_ITEMS = {"pizza", "wings_2h", "wings_4h", "baked_goods"}
+    OVEN_ITEMS = {
+        "wings_bone_in", "wings_boneless",
+        "chicken_strip", "chicken_bite", "quesadilla", "chicken_sandwich",
+        "potato_wedge", "waffle_tot", "hash_brown",
+        "empanada", "chimichanga", "jamaican_turnover", "jamaican_patty", "pupusa",
+        "beef_mini_taco", "garlic_knot", "kolache",
+        "croissant", "breakfast_sandwich", "sweet_croissant", "danish",
+        "pizza_slice", "pizza_stuffed",
+        "hot_dog", "sausage", "taquito", "buffalo_roller", "corn_dog",
+    }
 
     # How often each strategy is used
     STRATEGY_WEIGHTS = {
         "expiration": 0.40,   # pick item closest to window end
-        "habit": 0.30,       # always pick pizza (most familiar)
+        "habit": 0.30,       # default to familiar high-volume items
         "random": 0.20,      # random choice
         "demand": 0.10,      # pick highest demand item
     }
 
-    # Habit preferences: associates default to familiar items
-    HABIT_PRIORITY = ["pizza", "wings_2h", "baked_goods", "wings_4h"]
+    # Habit preferences: associates default to familiar high-volume items
+    HABIT_PRIORITY = [
+        "taquito", "hot_dog", "sausage", "pizza_slice",
+        "wings_bone_in", "chicken_sandwich", "corn_dog",
+    ]
 
     def __init__(self, seed: int = 42):
         self.rng = random.Random(seed)

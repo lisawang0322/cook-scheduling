@@ -24,8 +24,17 @@ from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import classification_report
 
 
-# Fixed order of oven items
-OVEN_ITEMS = ["pizza", "wings_2h", "wings_4h", "baked_goods"]
+# Fixed order of items (oven + grill — all compete for scheduling priority)
+OVEN_ITEMS = [
+    "wings_bone_in", "wings_boneless",
+    "chicken_strip", "chicken_bite", "quesadilla", "chicken_sandwich",
+    "potato_wedge", "waffle_tot", "hash_brown",
+    "empanada", "chimichanga", "jamaican_turnover", "jamaican_patty", "pupusa",
+    "beef_mini_taco", "garlic_knot", "kolache",
+    "croissant", "breakfast_sandwich", "sweet_croissant", "danish",
+    "pizza_slice", "pizza_stuffed",
+    "hot_dog", "sausage", "taquito", "buffalo_roller", "corn_dog",
+]
 
 
 def compute_historical_features(cook_logs: list[dict[str, Any]],

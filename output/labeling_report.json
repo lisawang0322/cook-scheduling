@@ -1,20 +1,29 @@
 {
-  "total_labeled_scenarios": 5355,
+  "total_labeled_scenarios": 2164,
   "first_item_distribution": {
-    "baked_goods": 286,
-    "pizza": 3209,
-    "wings_2h": 1859,
-    "wings_4h": 1
+    "breakfast_sandwich": 347,
+    "chicken_bite": 40,
+    "chicken_sandwich": 945,
+    "chicken_strip": 110,
+    "chimichanga": 2,
+    "croissant": 10,
+    "empanada": 5,
+    "garlic_knot": 9,
+    "hash_brown": 6,
+    "jamaican_patty": 5,
+    "potato_wedge": 3,
+    "quesadilla": 13,
+    "wings_bone_in": 451,
+    "wings_boneless": 218
   },
   "store_type_distribution": {
-    "highway": 1811,
-    "suburban": 1808,
-    "urban": 1736
+    "highway": 774,
+    "suburban": 744,
+    "urban": 646
   },
   "rank_size_distribution": {
-    "2": 2824,
-    "3": 2114,
-    "4": 417
+    "19": 1343,
+    "28": 821
   },
-  "v1_agreement_pct": 70.0
+  "v1_agreement_pct": 58.6
 }

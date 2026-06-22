@@ -14,7 +14,7 @@ if APP_DIR not in sys.path:
 from utils import (
     load_model, get_v1_ranking, get_associate_pick, get_v22_ranking,
     generate_explanation, generate_forecast_demand,
-    ITEM_DISPLAY_NAMES, ITEM_EMOJIS,
+    ITEM_DISPLAY_NAMES, ITEM_EMOJIS, ITEM_LCU, ITEM_HOLD_TIMES,
     STORE_TYPE_LABELS, HOUR_LABELS, OVEN_ITEMS,
 )
 
@@ -58,7 +58,7 @@ item_config = {}
 for item in OVEN_ITEMS:
     emoji = ITEM_EMOJIS.get(item, "")
     display = ITEM_DISPLAY_NAMES[item]
-    enabled = st.sidebar.checkbox(f"{emoji} {display}", value=(item != "wings_4h"))
+    enabled = st.sidebar.checkbox(f"{emoji} {display}", value=True)
     if enabled:
         demand = generate_forecast_demand(item, hour, store_type, is_weekend)
         item_config[item] = demand
@@ -67,14 +67,6 @@ for item in OVEN_ITEMS:
 if len(item_config) < 2:
     st.warning("⚠️ Select at least 2 items in the sidebar to see a ranking comparison.")
     st.stop()
-
-# Item properties
-ITEM_PROPS = {
-    "pizza": {"lcu": 6, "hold_time": 2},
-    "wings_2h": {"lcu": 5, "hold_time": 2},
-    "wings_4h": {"lcu": 8, "hold_time": 4},
-    "baked_goods": {"lcu": 1, "hold_time": 24},
-}
 
 features = {
     "decision_hour": hour,
@@ -85,11 +77,12 @@ features = {
 }
 
 for item, demand in item_config.items():
-    props = ITEM_PROPS[item]
+    lcu = ITEM_LCU.get(item, 1)
+    hold = ITEM_HOLD_TIMES.get(item, 2)
     features[f"{item}_forecast_demand"] = demand
-    features[f"{item}_lcu"] = props["lcu"]
-    features[f"{item}_hold_time"] = props["hold_time"]
-    features[f"{item}_time_remaining"] = max(0.5, props["hold_time"] - 0.25)
+    features[f"{item}_lcu"] = lcu
+    features[f"{item}_hold_time"] = hold
+    features[f"{item}_time_remaining"] = max(0.5, hold - 0.25)
     features[f"{item}_cooked_qty"] = demand
 
 # --- Run all three approaches ---
@@ -107,7 +100,7 @@ for i, (item, demand) in enumerate(item_config.items()):
         st.metric(
             f"{emoji} {ITEM_DISPLAY_NAMES[item]}",
             f"{demand} units",
-            help=f"Forecast generated from time of day & store type. Hold time: {ITEM_PROPS[item]['hold_time']}hr, LCU: {ITEM_PROPS[item]['lcu']}",
+            help=f"Forecast generated from time of day & store type. Hold time: {ITEM_HOLD_TIMES.get(item, 2)}hr, LCU: {ITEM_LCU.get(item, 1)}",
         )
         st.caption("📈 forecast")
 
@@ -158,7 +151,7 @@ for exp in explanations:
 st.markdown("---")
 st.markdown("### Try adjusting...")
 st.markdown("""
-- **Change the hour** to see how forecast demand shifts (pizza peaks at lunch, wings at dinner, baked goods in the morning)
+- **Change the hour** to see how forecast demand shifts (breakfast items peak early, wings/chicken peak at dinner, pizza peaks at lunch)
 - **Switch store type** to see how demand scales (urban: ×1.4, suburban: ×1.0, highway: ×0.7)
 - **Toggle weekend** to see the weekend uplift (×1.3 across all items)
 - **Toggle items** to see how the ranking adapts when fewer items compete for the oven

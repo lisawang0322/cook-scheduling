@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.model_trainer import ModelTrainer, build_feature_matrix
-from src.pairwise_trainer import PairwiseModelTrainer, compute_historical_features
+from src.pairwise_trainer import PairwiseModelTrainer, OVEN_ITEMS, compute_historical_features
 from src.cook_scheduler import AssociateBaseline
 
 
@@ -113,7 +113,7 @@ def main():
         expected_first = scenario["optimal_first_item"]
         # Build oven_events-like dicts from scenario features
         oven_events = []
-        for item in ["pizza", "wings_2h", "wings_4h", "baked_goods"]:
+        for item in OVEN_ITEMS:
             if f"{item}_forecast_demand" in features:
                 oven_events.append({
                     "item": item,

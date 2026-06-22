@@ -3,38 +3,38 @@
   "cross_validation": {
     "cv_folds": 5,
     "scores": [
-      0.847,
-      0.8698,
-      0.8578,
-      0.8483,
-      0.8568
+      0.7949,
+      0.7941,
+      0.796,
+      0.795,
+      0.7949
     ],
-    "mean_accuracy": 85.6,
-    "std_accuracy": 0.8
+    "mean_accuracy": 79.5,
+    "std_accuracy": 0.1
   },
   "training_set": {
-    "n_samples": 11668,
+    "n_samples": 539991,
     "n_features": 36,
     "label_distribution": {
-      "1": 8646,
-      "0": 3022
+      "1": 373884,
+      "0": 166107
     }
   },
-  "training_accuracy": 87.2,
+  "training_accuracy": 79.6,
   "feature_importance_top10": {
-    "diff_demand_density": 0.3600577069868932,
-    "b_hist_wo_overall": 0.09379768648999968,
-    "b_hist_wo_store": 0.05948608904311747,
-    "b_cooked_qty": 0.057816068222109204,
-    "day_of_week": 0.05243444218217289,
-    "b_lcu": 0.051152483818056,
-    "diff_demand": 0.04951615611795455,
-    "b_demand": 0.04427250216618688,
-    "diff_demand_vs_avg": 0.03917412599950512,
-    "diff_hist_wo_overall": 0.034965498131589084
+    "diff_demand_density": 0.5511247247669814,
+    "diff_urgency": 0.19687854608695782,
+    "diff_hold_time": 0.05071563670202482,
+    "diff_time_remaining": 0.048400285215873716,
+    "a_demand": 0.026297419646219164,
+    "diff_demand": 0.019731847220266097,
+    "a_cooked_qty": 0.018901483615564253,
+    "b_cooked_qty": 0.018425745290859958,
+    "b_demand": 0.013736078996052748,
+    "day_of_week": 0.010471292144086328
   },
   "ranking_accuracy": {
-    "ranking_top1_accuracy": 76.3,
-    "total_evaluated": 5355
+    "ranking_top1_accuracy": 77.1,
+    "total_evaluated": 2164
   }
 }

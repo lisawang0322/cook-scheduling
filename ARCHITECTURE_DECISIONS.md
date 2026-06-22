@@ -194,3 +194,21 @@ Sprint 1 delivers the core recommendation experience as 6 shippable features, ea
 **Technical Risks:** Synthetic data may not capture real-world complexity; model may overfit to synthetic patterns; stakeholder buy-in challenging without live-store validation.
 
 **Mitigation Strategies:** Build each feature as vertical slice demonstrable on synthetic data; keep v1 rules as deterministic fallback; ground impact/ROI views in `CostModel_lisaw2.xlsx`; capture associate overrides early to seed future retraining.
+
+---
+
+## Future Improvements
+
+### Model Explanation Layer (not yet implemented)
+
+**Current state:** Verbal explanations shown in the Hot Food Hero UI (both v1 rule order and v2.2 ML ranking) are **rule-templated strings** — post-hoc `if/else` logic keyed on `decision_hour`, `demand`, `hold_time`, and `store_type`. They do not reflect the actual decision path of the GBM model.
+
+**Option A — SHAP-based explanations (recommended next step)**
+Use `shap.TreeExplainer(model)` on the v2.2 GradientBoosting model to compute per-feature Shapley values at inference time. Map the top contributing features (e.g. `pizza_forecast_demand`, `decision_hour`, `baked_goods_hold_time`) to human-readable phrases. This would make the explanation genuinely model-faithful rather than heuristic.
+
+Approximate effort: add `shap` to `requirements.txt`, call `explainer.shap_values(X_row)` in `get_v22_ranking()`, return top-3 features with their direction and magnitude alongside the ranking.
+
+**Option B — LLM post-processing**
+Pass the ranked output + feature dict to an LLM (e.g. GPT-4o-mini) with a structured prompt to generate a natural-language rationale. Higher quality prose but adds latency, cost, and an external API dependency — not suitable for in-store deployment without connectivity guarantees.
+
+**Decision:** Defer both options. They do not improve model accuracy and add engineering overhead. Revisit if associate trust/adoption metrics show explanation quality is a blocker.

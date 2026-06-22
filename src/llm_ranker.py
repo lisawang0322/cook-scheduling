@@ -15,8 +15,7 @@ import re
 import time
 from typing import Any
 
-
-OVEN_ITEMS = ["pizza", "wings_2h", "wings_4h", "baked_goods"]
+from src.pairwise_trainer import OVEN_ITEMS  # single source of truth for item list
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROMPT_PATH = os.path.join(PROJECT_ROOT, "prompts", "v0.1_system_prompt.md")

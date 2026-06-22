@@ -1,12 +1,12 @@
 {
   "metadata": {
-    "run_date": "2026-06-20T16:01:43",
+    "run_date": "2026-06-21T20:00:57",
     "eval_set_version": "v0.1",
     "total_examples": 50,
-    "llm_model": "claude-sonnet-4-6",
+    "llm_model": "skipped",
     "prompt_version": "v0.1",
     "random_seed": 42,
-    "no_llm": false,
+    "no_llm": true,
     "source_distribution": {
       "synthetic_logs": 24,
       "synthetic_constructed": 8,
@@ -25,8 +25,8 @@
       "note": "Full-set holdout numbers. Use these as authoritative ML model scores; the 50-example shared eval is for cross-model comparison only.",
       "v1_rules_top1_pct": 71.8,
       "v1_rules_n_decisions": 6480,
-      "v2_2_ml_top1_pct": 74.3,
-      "v2_2_ml_n_scenarios": 1747,
+      "v2_2_ml_top1_pct": 68.9,
+      "v2_2_ml_n_scenarios": 730,
       "temporal_cutoff": "2025-05-01"
     }
   },
@@ -36,7 +36,7 @@
       "top1_accuracy": 52.4,
       "ranking_accuracy": 52.4,
       "refusal_accuracy": null,
-      "kendall_tau_mean": 0.4841,
+      "kendall_tau_mean": 0.4365,
       "latency_median_ms": 0.0,
       "parse_failures": 0,
       "ranking_evaluated": 42,
@@ -57,149 +57,101 @@
     },
     "v2_2_ml": {
       "name": "v2_2_ml",
-      "top1_accuracy": 78.6,
-      "ranking_accuracy": 78.6,
+      "top1_accuracy": 81.0,
+      "ranking_accuracy": 81.0,
       "refusal_accuracy": null,
-      "kendall_tau_mean": 0.7937,
-      "latency_median_ms": 2.5,
+      "kendall_tau_mean": 0.7619,
+      "latency_median_ms": 2.4,
       "parse_failures": 0,
       "ranking_evaluated": 42,
       "refusal_evaluated": 0,
       "evaluated": 42
-    },
-    "llm_v0.1_zero_shot": {
-      "name": "llm_v0.1_zero_shot",
-      "top1_accuracy": 50.0,
-      "ranking_accuracy": 45.2,
-      "refusal_accuracy": 75.0,
-      "kendall_tau_mean": 0.381,
-      "latency_median_ms": 1256.5,
-      "parse_failures": 0,
-      "ranking_evaluated": 42,
-      "refusal_evaluated": 8,
-      "evaluated": 50
     }
   },
   "breakdowns": {
     "by_category": {
-      "OOS": {
-        "llm_v0.1_zero_shot": 100.0
-      },
-      "adversarial": {
-        "llm_v0.1_zero_shot": 33.3
-      },
       "edge": {
-        "associate_floor": 41.7,
+        "associate_floor": 50.0,
         "v1_rules": 91.7,
-        "v2_2_ml": 58.3,
-        "llm_v0.1_zero_shot": 41.7
+        "v2_2_ml": 83.3
       },
       "modal": {
-        "associate_floor": 56.7,
+        "associate_floor": 53.3,
         "v1_rules": 73.3,
-        "v2_2_ml": 86.7,
-        "llm_v0.1_zero_shot": 46.7
+        "v2_2_ml": 80.0
       }
     },
     "by_source": {
-      "hand": {
-        "llm_v0.1_zero_shot": 75.0
-      },
       "simulated_interview": {
-        "associate_floor": 60.0,
+        "associate_floor": 50.0,
         "v1_rules": 90.0,
-        "v2_2_ml": 70.0,
-        "llm_v0.1_zero_shot": 60.0
+        "v2_2_ml": 90.0
       },
       "synthetic_constructed": {
         "associate_floor": 37.5,
         "v1_rules": 87.5,
-        "v2_2_ml": 62.5,
-        "llm_v0.1_zero_shot": 50.0
+        "v2_2_ml": 87.5
       },
       "synthetic_logs": {
-        "associate_floor": 54.2,
+        "associate_floor": 58.3,
         "v1_rules": 70.8,
-        "v2_2_ml": 87.5,
-        "llm_v0.1_zero_shot": 37.5
+        "v2_2_ml": 75.0
       }
     },
     "by_eval_tag": {
-      "OOS": {
-        "llm_v0.1_zero_shot": 100.0
-      },
       "accuracy": {
-        "associate_floor": 56.7,
+        "associate_floor": 53.3,
         "v1_rules": 73.3,
-        "v2_2_ml": 86.7,
-        "llm_v0.1_zero_shot": 46.7
-      },
-      "adversarial": {
-        "llm_v0.1_zero_shot": 33.3
+        "v2_2_ml": 80.0
       },
       "divergence": {
-        "associate_floor": 25.0,
+        "associate_floor": 50.0,
         "v1_rules": 75.0,
-        "v2_2_ml": 100.0,
-        "llm_v0.1_zero_shot": 0.0
+        "v2_2_ml": 100.0
       },
       "edge_case": {
-        "associate_floor": 41.7,
+        "associate_floor": 50.0,
         "v1_rules": 91.7,
-        "v2_2_ml": 58.3,
-        "llm_v0.1_zero_shot": 41.7
+        "v2_2_ml": 83.3
       }
     },
     "by_store_type": {
       "highway": {
         "associate_floor": 23.1,
         "v1_rules": 76.9,
-        "v2_2_ml": 76.9,
-        "llm_v0.1_zero_shot": 53.8
+        "v2_2_ml": 76.9
       },
       "suburban": {
-        "associate_floor": 75.0,
+        "associate_floor": 66.7,
         "v1_rules": 66.7,
-        "v2_2_ml": 83.3,
-        "llm_v0.1_zero_shot": 41.7
-      },
-      "unknown": {
-        "llm_v0.1_zero_shot": 75.0
+        "v2_2_ml": 75.0
       },
       "urban": {
-        "associate_floor": 58.8,
+        "associate_floor": 64.7,
         "v1_rules": 88.2,
-        "v2_2_ml": 76.5,
-        "llm_v0.1_zero_shot": 41.2
+        "v2_2_ml": 88.2
       }
     },
     "by_hour_band": {
       "afternoon": {
         "associate_floor": 71.4,
         "v1_rules": 85.7,
-        "v2_2_ml": 85.7,
-        "llm_v0.1_zero_shot": 42.9
+        "v2_2_ml": 85.7
       },
       "evening": {
         "associate_floor": 62.5,
         "v1_rules": 87.5,
-        "v2_2_ml": 100.0,
-        "llm_v0.1_zero_shot": 37.5
+        "v2_2_ml": 75.0
       },
       "lunch": {
-        "associate_floor": 62.5,
+        "associate_floor": 50.0,
         "v1_rules": 100.0,
-        "v2_2_ml": 62.5,
-        "llm_v0.1_zero_shot": 75.0
+        "v2_2_ml": 75.0
       },
       "morning": {
-        "associate_floor": 36.8,
+        "associate_floor": 42.1,
         "v1_rules": 63.2,
-        "v2_2_ml": 73.7,
-        "llm_v0.1_zero_shot": 36.8
-      },
-      "unknown": {
-        "llm_v0.1_zero_shot": 75.0
+        "v2_2_ml": 84.2
       }
     }
   }

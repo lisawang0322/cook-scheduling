@@ -2,7 +2,7 @@
 
 An AI system that helps store associates decide which hot food item to cook first during overlapping daypart windows. Built across Weeks 1–9 using a three-tier model stack (rule-based → ML → LLM benchmark) with a reproducible evaluation harness.
 
-> **Sprint 1 Status (Week 9):** All deliverables complete. v1 71.8% top-1, v2.2 74.3% (honest temporal holdout), LLM v0.2 64.0% (associate-voice framing, 50-example shared eval). See `SPRINT1_SUMMARY.md` for full breakdown.
+> **Sprint 1 Status (Week 9):** All deliverables complete. Post-sprint 28-item expansion retrained Jun 2026: associate 8.9% • v1 58.6% • v2.2 68.9% (honest temporal test, 730 holdout scenarios) • +60pp over associate. LLM v0.2 64.0% (Sprint 1 5-item eval, unchanged). See `SPRINT1_SUMMARY.md` for Sprint 1 5-item baseline.
 
 ---
 
@@ -79,12 +79,14 @@ The system generates this schedule by:
 
 ### Three-Tier Model Stack
 
-| Tier | Model | Role | Accuracy (shared eval) |
-|---|---|---|---|
-| Floor | `AssociateBaseline` | Simulates realistic (flawed) associate behavior | 52.4% |
-| ML v1 | Rule-based heuristic | Urgency × demand_density × waste_penalty | 78.6% |
-| ML v2.2 | Pairwise GBM (temporal split) | Learned from labeled historical data | 78.6% |
-| Ceiling | LLM v0.2 (claude-sonnet-4-6) | Idealized associate intuition, no formulas | 64.0% |
+| Tier | Model | Role | 28-item holdout | 5-item shared eval |
+|---|---|---|---|---|
+| Floor | `AssociateBaseline` | Simulates realistic (flawed) associate behavior | 8.9% | 52.4% |
+| ML v1 | Rule-based heuristic | Urgency × demand_density × waste_penalty | 58.6% | 78.6% |
+| ML v2.2 | Pairwise GBM (temporal split) | Learned from labeled historical data | **68.9%** | **81.0%** |
+| Ceiling | LLM v0.2 (claude-sonnet-4-6) | Idealized associate intuition, no formulas | n/a | 64.0% |
+
+*28-item holdout = temporal split ≥ 2025-05-01, 730 scenarios. 5-item shared eval = Sprint 1 50-example set (pizza/wings/baked goods). v2.2 improved on both after retraining.*
 
 **Why predictive ML as primary model:** This is a classification task with deterministic outputs — correct rank order given a scenario. Predictive ML is narrow, well-scoped, and measured by accuracy metrics. It fits this constraint-satisfaction problem without hallucination risk.
 
@@ -104,26 +106,27 @@ This section documents every assumption baked into the synthetic data generator,
 
 **Item Properties (hardcoded in `SyntheticDataGenerator.ITEM_PROPERTIES`):**
 
-| Item | Hold Time | LCU | Exact Multiples? | Unit | Equipment |
-|------|-----------|-----|------------------|------|-----------|
-| Pizza | 2 hours | 6 | Yes (6, 12, 18…) | slices | Oven |
-| Wings (2h) | 2 hours | 5 | Yes (5, 10, 15…) | pieces | Oven |
-| Wings (4h) | 4 hours | 8 | Yes (8, 16, 24…) | pieces | Oven |
-| Taquitos | 4 hours | 2 | No (any qty ≥ 2) | pieces | Roller grill |
-| Baked goods | 24 hours | 1 | No (any qty ≥ 1) | pieces | Oven |
+28 items are modeled across three hold-time / equipment groups:
 
-- **Wings are split into two variants** — some have a 2-hour hold time (LCU=5) and others have a 4-hour hold time (LCU=8). Both require exact multiples of their LCU.
-- **No nachos** in this model.
-- **Taquitos** have a minimum of 2 but can be cooked in any quantity ≥ 2 (no rounding-up to multiples).
-- **Baked goods** have a 24-hour hold time (effectively cook once per day). No LCU constraint.
-- 5 item types are modeled. Real stores carry more hot food SKUs.
+| Group | Hold Time | Equipment | Items (ID: LCU) |
+|-------|-----------|-----------|------------------|
+| Wings & chicken | 2 hr | Oven | wings_bone_in:5, wings_boneless:8, chicken_strip:3, chicken_bite:10, quesadilla:5, chicken_sandwich:1 |
+| Sides | 2 hr | Oven | potato_wedge:10, waffle_tot:10, hash_brown:2 |
+| Handheld & ethnic | 2 hr | Oven | empanada:2, chimichanga:2, jamaican_turnover:2, jamaican_patty:1†, pupusa:2 |
+| Bakery & breakfast | 2 hr | Oven | garlic_knot:2, kolache:2, breakfast_sandwich:1, pizza_slice:6, pizza_stuffed:2 |
+| Slow oven | 4 hr | Oven | beef_mini_taco:8, croissant:1, sweet_croissant:6, danish:6 |
+| Roller grill | 4 hr | Roller grill | hot_dog:2, sausage:2, taquito:2, buffalo_roller:2†, corn_dog:2 |
+
+† = non-exact multiples (all other items use exact multiples of their LCU)
+
+- **28 item types** are modeled. Baked goods (24h hold) removed from scope.
 - Hold times and LCUs are domain-expert estimates, not from actual 7-Eleven operational data.
 - All data is **entirely synthetic** — no real 7-Eleven store data is used.
 
 **Cooking Equipment:**
-- **Oven:** Pizza, Wings (2h), Wings (4h), Baked goods. These items compete for oven time.
-- **Roller grill:** Taquitos. Operates independently of the oven.
-- Since the equipment is separate, **taquitos can be cooked in parallel** with any oven item. The scheduling constraint only applies among oven items (pizza, wings, baked goods).
+- **Oven:** 23 items (wings, chicken, sides, ethnic handhelds, bakery/breakfast, pizza, slow-oven pastries). These compete for oven time.
+- **Roller grill:** 5 items (hot_dog, sausage, taquito, buffalo_roller, corn_dog). Operate independently of the oven.
+- Since the equipment is separate, **grill items can be cooked in parallel** with any oven item. The scheduling constraint only applies among oven items.
 - Oven capacity is assumed but not explicitly modeled (no upper bound constraint in the prototype).
 - Associate lead time for switching between equipment is negligible in this model.
 
@@ -224,15 +227,15 @@ Quality issues are injected at generation time with these probabilities:
 
 ### Observed vs. Target Distribution
 
-| Metric | Design Target | Actual (seed=42) | Explanation |
-|--------|---------------|-------------------|-------------|
-| Total cook events | — | **23,061** | 19,980 initial + ~3,081 restocks (15% sell-through rate) |
-| POS sales records | — | **~164,000** | Linked to cook events by quantity sold |
-| Write-off log entries | — | **~19,600** | 23,061 minus ~15% gaps |
-| High confidence | ~60% | **66.4%** | Restock events introduce more write-off variability |
-| Medium confidence | ~30% | **23.7%** | Gaps + counting errors |
-| Low confidence | ~10% | **10.0%** | Higher due to restock over-cooking (LCU rounding up) |
-| Usable for training | ~90% | **90.0%** | High + medium confidence combined |
+| Metric | Design Target | Actual (28-item retrain) | Explanation |
+|--------|---------------|--------------------------|-------------|
+| Total cook events | — | **175,051** | 28-item set, 180 days, 3 store types |
+| POS sales records | — | **766,229** | Linked to cook events by quantity sold |
+| Write-off log entries | — | **148,422** | 175,051 minus ~15% gaps |
+| High confidence | ~60% | **70.5%** | More diverse items create clearer quantity differentials |
+| Medium confidence | ~30% | **23.2%** | Gaps + counting errors |
+| Low confidence | ~10% | **6.2%** | Lower than Sprint 1 due to more diverse item mix |
+| Usable for training | ~90% | **93.8%** | High + medium confidence combined |
 
 ### General Project Assumptions
 
@@ -265,18 +268,17 @@ Quality issues are injected at generation time with these probabilities:
    - Generate write-off logs with realistic quality issues (60/15/20/5 distribution)
 
 **Deliverables:**
-- `data/cook_logs.json` — ~23,000 cook events (19,980 initial + ~3,000 restocks)
-- `data/pos_sales.json` — ~164,000 individual sale records linked to cook events
-- `data/write_off_logs.json` — ~19,600 write-off entries (23,061 minus ~15% gaps)
+- `data/cook_logs.json` — 175,051 cook events (28-item set, 180 days)
+- `data/pos_sales.json` — 766,229 individual sale records linked to cook events
+- `data/write_off_logs.json` — 148,422 write-off entries
 - `output/quality_report.json` — Data quality assessment with confidence breakdown
 
-**Observed Results (seed=42):**
-- ✅ 66.4% high-confidence data (inferred ≈ logged, ±1 unit)
-- ✅ 23.7% medium-confidence data (gaps or ±2 counting errors)
-- ✅ 10.0% low-confidence data (major discrepancies, ±3+ units)
-- ✅ 90.0% usable for training (high + medium combined)
-- ✅ ~13% of windows trigger mid-window restock cooks
-- ✅ Quality breakdown by store type: highway 67.6% high, suburban 66.8%, urban 64.7%
+**Observed Results (28-item retrain):**
+- ✅ 70.5% high-confidence data (inferred ≈ logged, ±1 unit)
+- ✅ 23.2% medium-confidence data (gaps or ±2 counting errors)
+- ✅ 6.2% low-confidence data (major discrepancies, ±3+ units)
+- ✅ 93.8% usable for training (high + medium combined)
+- ✅ Quality breakdown by store type: highway 71.5% high, suburban 70.5%, urban 69.7%
 
 ---
 
@@ -387,14 +389,13 @@ Attempt 3 was chosen because it creates labels that differ from v1 (34.2% agreem
 4. Create labeled dataset: scenario features → optimal cook order
 
 **Deliverables:**
-- `data/labeled_training_set.json` — 5,290 labeled decision-point scenarios
+- `data/labeled_training_set.json` — 2,164 labeled decision-point scenarios (28-item set)
 - `output/labeling_report.json` — Quality assurance report
 
 **Success Criteria:**
-- ✅ 5,290 labeled scenarios ready for training
+- ✅ 2,164 labeled scenarios ready for training (28-item set; fewer decision points per store due to larger item universe)
 - ✅ All labels validated by composite scoring (no contradictions)
-- ✅ 73.2% of scenarios are outcome-informative
-- ✅ v1 agreement: 34.2% (enough divergence for v2 to add value)
+- ✅ v1 agreement: 58.6%
 
 ---
 
@@ -602,17 +603,18 @@ Associates don't use a formula. Based on store observations, their decision proc
 
 This produces **55.0% accuracy** — better than pure random (~33%) but far below what's achievable with systematic decision-making.
 
-**Final results with enriched data:**
+**Final results with enriched data (28-item set, retrained Jun 2026):**
 
 ```
-Associate baseline (current state):        55.0%
-v1 (rule-based heuristic):                 70.0%
-v2.2 (pairwise + temporal + weights):      74.3%  (honest temporal test)
+Associate baseline (current state):         8.9%  (28 items; habit/random ≈ 1/28 base rate)
+v1 (rule-based heuristic):                 58.6%
+v2.1 (pairwise GBM, no temporal split):   77.1%  (top-1, 539,991 pairs)
+v2.2 (pairwise + temporal + weights):      68.9%  (honest temporal test, 730 holdout scenarios)
 ```
 
-**Why v1 improved to 70%:** The item-specific demand curves create clearer urgency signals that v1's formula exploits (high demand at specific hours → high urgency × density score).
+**Why associate accuracy dropped to 8.9%:** With 28 competing items, habit/random behavior converges near random chance (~1/28 = 3.6% base rate). The urgency-based habit picking provides only a small lift above floor.
 
-**Why the ML model still beats v1 by +4.3pp:** The model learns *item × hour × store_type* interaction patterns (e.g., "wings at urban stores in morning = always waste → deprioritize") that a static formula can't capture.
+**Why v2.2 beats v1 by +10.3pp:** The pairwise GBM learns *item × hour × store_type* interaction patterns and historical write-off signals that the static urgency × density formula cannot capture across 28 heterogeneous items.
 
 ---
 
@@ -620,12 +622,12 @@ v2.2 (pairwise + temporal + weights):      74.3%  (honest temporal test)
 
 | Version | Approach | Pairwise CV | Honest Test | vs Associate |
 |---------|----------|-------------|-------------|--------------|
-| Associate | Mix of expiration/habit/random/demand | — | 55.0% | baseline |
-| v1 | Rule-based (urgency × density × penalty) | — | 70.0% | +15.0 |
-| v2.1 | Pairwise GBM + historical (no temporal split) | 85.6% | 76.3% | +21.3 |
-| **v2.2** | **Pairwise GBM + temporal + soft labels** | **85.4%** | **74.3%** | **+19.3** |
+| Associate | Mix of expiration/habit/random/demand | — | 8.9% | baseline |
+| v1 | Rule-based (urgency × density × penalty) | — | 58.6% | +49.7 |
+| v2.1 | Pairwise GBM + historical (no temporal split) | 79.5% | 77.1% | +68.2 |
+| **v2.2** | **Pairwise GBM + temporal + soft labels** | **79.6%** | **68.9%** | **+60.0** |
 
-**Note:** v2.1's 76.3% is slightly inflated (historical features used test-period data). v2.2's 74.3% is the honest metric with no data leakage.
+**Note:** v2.1's 77.1% is slightly inflated (historical features used test-period data). v2.2's 68.9% is the honest metric with no data leakage. Lower absolute accuracy vs Sprint 1 (74.3%) reflects the harder 28-item problem, while the +60pp gap over associate is actually larger.
 
 ---
 
@@ -661,9 +663,9 @@ python scripts/compare_llm_versions.py v0.1 v0.2
 
 | Comparator | Overall Top-1 | Ranking | Refusal (OOS+adv) | Kendall τ |
 |---|---|---|---|---|
-| associate_floor | 52.4% | 52.4% | n/a | 0.484 |
+| associate_floor | 52.4% | 52.4% | n/a | 0.436 |
 | v1_rules | 78.6% | 78.6% | n/a | 0.730 |
-| v2_2_ml | 78.6% | 78.6% | n/a | 0.794 |
+| v2_2_ml | **81.0%** | **81.0%** | n/a | **0.762** |
 | llm_v0.1_zero_shot | 50.0% | 45.2% | 75.0% | 0.381 |
 | **llm_v0.2_zero_shot** | **64.0%** | **61.9%** | **75.0%** | **0.476** |
 
@@ -800,7 +802,7 @@ python scripts/compare_llm_versions.py v0.1 v0.2
   ┌─────────┐       ┌──────────┐      ┌───────────┐
   │   v1    │       │  v2.2    │      │ LLM       │
   │  Rules  │       │  ML      │      │ Benchmark │
-  │  71.8%  │       │  74.3%   │      │ (ceiling) │
+  │  58.6%  │       │  68.9%   │      │ (ceiling) │
   └────┬────┘       └────┬─────┘      └─────┬─────┘
        │                 │                  │
        └────────┬─────────┘                 │
@@ -813,8 +815,8 @@ python scripts/compare_llm_versions.py v0.1 v0.2
 ```
 
 **Two-tier evaluation:**
-- **ML holdout (1,747 scenarios, temporal split ≥ 2025-05-01):** Authoritative accuracy for v1 and v2.2 reported in isolation.
-- **50-example shared eval:** Side-by-side comparison of all four comparators (associate floor → v1 → v2.2 → LLM) on identical inputs.
+- **ML holdout (730 scenarios, temporal split ≥ 2025-05-01):** Authoritative accuracy on retrained 28-item set. v1 58.6%, v2.2 68.9%.
+- **50-example shared eval (Sprint 1):** All four comparators on identical 5-item inputs (re-run Jun 2026 against retrained models). v1 78.6%, v2.2 **81.0%** (+2.4pp vs Sprint 1), LLM v0.2 64.0%.
 
 ### Data Flow
 
@@ -826,13 +828,13 @@ python scripts/compare_llm_versions.py v0.1 v0.2
    └─> Data quality report (high/medium/low confidence)
 
 3. Build v1 (Week 3–4)  ✅
-   └─> Rule-based ranking — 71.8% top-1 (6,480 decision points)
+   └─> Rule-based ranking — 58.6% top-1 (28-item set, 2,164 decision points)
 
 4. Label Data (Week 5–6)  ✅
-   └─> 5,290 labeled decision-point scenarios
+   └─> 2,164 labeled decision-point scenarios (28-item set)
 
 5. Train v2 → v2.2 (Week 7)  ✅
-   └─> Pairwise GBM — 74.3% honest test (temporal split)
+   └─> Pairwise GBM — 68.9% honest test (28-item, temporal split)
 
 6. LLM Benchmark (Week 8–9)  ✅
    └─> 50-example shared eval; v0.1 50% → v0.2 64% top-1
@@ -1062,10 +1064,10 @@ python notebooks/week7_model_training.py
 ```
 7eleven-cook-scheduling/
 ├── data/
-│   ├── cook_logs.json                  # ~23,000 cook events
-│   ├── pos_sales.json                  # ~164,000 sale records
-│   ├── write_off_logs.json             # ~19,600 write-off entries
-│   ├── labeled_training_set.json       # 5,290 labeled decision-point scenarios
+│   ├── cook_logs.json                  # 175,051 cook events (28-item set)
+│   ├── pos_sales.json                  # 766,229 sale records
+│   ├── write_off_logs.json             # 148,422 write-off entries
+│   ├── labeled_training_set.json       # 2,164 labeled decision-point scenarios
 │   ├── llm_eval_set_v0.1.json          # 50-example shared eval set
 │   ├── llm_eval_set_v0.1.csv           # Same, CSV format
 │   └── interview_notes.md              # 15 simulated associate vignettes
@@ -1100,8 +1102,8 @@ python notebooks/week7_model_training.py
 │   └── v2_2_pairwise_temporal.pkl      # v2.2 final model — use this
 │
 ├── output/
-│   ├── v1_eval_report.json             # v1: 71.8% top-1 (6,480 pts)
-│   ├── v2_2_temporal_report.json       # v2.2: 74.3% honest test
+│   ├── v1_eval_report.json             # v1: 58.6% top-1 (28-item set)
+│   ├── v2_2_temporal_report.json       # v2.2: 68.9% honest test (28-item set)
 │   ├── llm_eval_v0.1_report.json       # LLM v0.1: 50.0% top-1
 │   ├── llm_eval_v0.2_report.json       # LLM v0.2: 64.0% top-1
 │   ├── llm_eval_v0.1_predictions.json  # Per-example predictions
@@ -1127,11 +1129,12 @@ python notebooks/week7_model_training.py
 
 | Week | Phase | Deliverable | Actual Result |
 |------|-------|---|---|
-| 1–2 | Data Generation | ~23,000 cook events, quality report | ✅ 66.4% high, 90.0% usable |
-| 3–4 | v1 Baseline | Rule-based ranker | ✅ 71.8% top-1 (6,480 decision pts) |
-| 5–6 | Data Labeling | 5,290 labeled scenarios | ✅ All high+medium, 0 contradictions |
-| 7 | Model Training | v2 → v2.2 pairwise GBM | ✅ 74.3% honest test (temporal split) |
+| 1–2 | Data Generation | ~23,000 cook events, quality report | ✅ Sprint 1: 66.4% high, 90.0% usable |
+| 3–4 | v1 Baseline | Rule-based ranker | ✅ Sprint 1: 71.8% (5-item) → **58.6%** (28-item retrain) |
+| 5–6 | Data Labeling | 5,290 → 2,164 labeled scenarios | ✅ 28-item: 2,164 scenarios, 0 contradictions |
+| 7 | Model Training | v2 → v2.2 pairwise GBM | ✅ Sprint 1: 74.3% (5-item) → **68.9%** (28-item retrain) |
 | 8–9 | Demo + LLM Eval | Streamlit app, 50-ex eval, v0.1→v0.2 | ✅ Sprint 1 complete (⭐ SPRINT1_SUMMARY.md) |
+| Post-S1 | Item Expansion | 28-item set, retrained v2.2 | ✅ 175K events, 2,164 scenarios, v2.2 68.9% test, +60pp vs associate |
 
 ---
 
@@ -1157,5 +1160,5 @@ python notebooks/week7_model_training.py
 
 ---
 
-**Last Updated:** June 20, 2026  
-**Project Status:** Sprint 1 complete (Weeks 1–9). v1 71.8% • v2.2 74.3% • LLM v0.2 64.0%. See [`SPRINT1_SUMMARY.md`](SPRINT1_SUMMARY.md).
+**Last Updated:** June 21, 2026  
+**Project Status:** Sprint 1 complete (Weeks 1–9) + 28-item expansion (Jun 2026). 28-item holdout: v1 58.6% • v2.2 68.9%. 5-item shared eval (re-run): v1 78.6% • v2.2 **81.0%** (+2.4pp) • LLM v0.2 64.0%. v2.2 is +60pp over associate on 28-item set. See [`SPRINT1_SUMMARY.md`](SPRINT1_SUMMARY.md) for Sprint 1 baseline.

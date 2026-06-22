@@ -3,49 +3,49 @@
   "cross_validation": {
     "cv_folds": 5,
     "scores": [
-      0.8468,
-      0.8532,
-      0.8627,
-      0.8467,
-      0.8608
+      0.7943,
+      0.7958,
+      0.7949,
+      0.7971,
+      0.797
     ],
-    "mean_accuracy": 85.4,
-    "std_accuracy": 0.7
+    "mean_accuracy": 79.6,
+    "std_accuracy": 0.1
   },
   "training_set": {
-    "n_samples": 7832,
+    "n_samples": 357822,
     "n_features": 36,
     "label_distribution": {
-      "1": 5788,
-      "0": 2044
+      "1": 248193,
+      "0": 109629
     }
   },
-  "training_accuracy": 87.1,
+  "training_accuracy": 79.2,
   "feature_importance_top10": {
-    "b_hist_wo_overall": 0.20016815534789129,
-    "diff_demand": 0.15190802278078985,
-    "b_lcu": 0.1196972819719339,
-    "diff_demand_density": 0.09904071325475518,
-    "day_of_week": 0.08273887346565101,
-    "a_hist_wo_store": 0.04747926642009888,
-    "diff_demand_vs_avg": 0.04152101404629327,
-    "b_hist_wo_store": 0.029238995873502573,
-    "diff_hist_wo_overall": 0.02707930233363152,
-    "diff_hist_wo_store": 0.024276134582690758
+    "diff_demand_density": 0.4502382492312021,
+    "diff_urgency": 0.13015349655086572,
+    "diff_demand": 0.08800894913451766,
+    "diff_hold_time": 0.0810611424172201,
+    "a_cooked_qty": 0.041264676835559636,
+    "a_demand": 0.023912367231519318,
+    "b_demand": 0.023829868118220077,
+    "day_of_week": 0.021553995140108185,
+    "diff_time_remaining": 0.021377603157535067,
+    "diff_hist_wo_overall": 0.01764181007661174
   },
   "temporal_split": {
     "cutoff_date": "2025-05-01",
-    "train_scenarios": 3608,
-    "test_scenarios": 1747,
-    "train_cv_accuracy": 85.4,
-    "test_top1_accuracy": 74.3,
-    "full_top1_accuracy": 75.5
+    "train_scenarios": 1434,
+    "test_scenarios": 730,
+    "train_cv_accuracy": 79.6,
+    "test_top1_accuracy": 68.9,
+    "full_top1_accuracy": 72.2
   },
   "sample_weights": {
     "enabled": true,
     "min_weight": 0.3,
     "max_weight": 1.0,
-    "mean_weight": 0.616,
-    "low_weight_pct": 24.5
+    "mean_weight": 0.523,
+    "low_weight_pct": 52.8
   }
 }

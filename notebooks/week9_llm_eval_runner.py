@@ -101,7 +101,10 @@ def load_v22_model() -> PairwiseModelTrainer:
 # ===========================================================================
 
 def present_items(features: dict) -> list[str]:
-    return [item for item in OVEN_ITEMS if f"{item}_forecast_demand" in features]
+    found = {k[: -len("_forecast_demand")] for k in features if k.endswith("_forecast_demand")}
+    ordered = [item for item in OVEN_ITEMS if item in found]
+    extras = sorted(found - set(ordered))
+    return ordered + extras
 
 
 def rank_v1(scheduler: CookSchedulerV1, features: dict) -> list[str] | None:
@@ -151,9 +154,7 @@ def build_llm_user_prompt(features: dict) -> str:
     the physical tray size an associate knows, not as a computed ratio.
     """
     items_lines = []
-    for item in OVEN_ITEMS:
-        if f"{item}_forecast_demand" not in features:
-            continue
+    for item in present_items(features):
         demand = features[f"{item}_forecast_demand"]
         lcu = features[f"{item}_lcu"]
         hold = features[f"{item}_hold_time"]

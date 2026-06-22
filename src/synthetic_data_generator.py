@@ -6,45 +6,49 @@ from datetime import datetime, timedelta
 from typing import Any
 
 
+# Reusable time-of-day demand curves (shared by SyntheticDataGenerator)
+_C_MORNING      = {0:0.1,1:0.1,2:0.1,3:0.1,4:0.15,5:0.25,6:0.8,7:1.5,8:1.6,9:1.4,10:1.0,11:0.6,12:0.4,13:0.3,14:0.25,15:0.2,16:0.2,17:0.2,18:0.2,19:0.2,20:0.15,21:0.1,22:0.1,23:0.1}
+_C_LUNCH        = {0:0.1,1:0.1,2:0.1,3:0.1,4:0.1,5:0.15,6:0.3,7:0.5,8:0.6,9:0.8,10:1.0,11:1.4,12:1.7,13:1.5,14:1.2,15:0.9,16:0.7,17:0.8,18:0.9,19:0.8,20:0.6,21:0.4,22:0.3,23:0.15}
+_C_DINNER       = {0:0.15,1:0.1,2:0.1,3:0.1,4:0.1,5:0.15,6:0.3,7:0.4,8:0.5,9:0.6,10:0.7,11:0.9,12:1.0,13:1.0,14:0.9,15:0.9,16:1.0,17:1.4,18:1.6,19:1.7,20:1.5,21:1.2,22:0.7,23:0.4}
+_C_ALL_DAY      = {0:0.2,1:0.15,2:0.1,3:0.1,4:0.1,5:0.2,6:0.4,7:0.7,8:0.8,9:0.9,10:1.0,11:1.1,12:1.2,13:1.1,14:1.0,15:0.9,16:1.0,17:1.2,18:1.3,19:1.2,20:1.0,21:0.8,22:0.5,23:0.3}
+_C_LUNCH_DINNER = {0:0.1,1:0.1,2:0.1,3:0.1,4:0.1,5:0.15,6:0.3,7:0.5,8:0.6,9:0.8,10:1.0,11:1.3,12:1.5,13:1.4,14:1.1,15:0.9,16:1.0,17:1.3,18:1.5,19:1.4,20:1.0,21:0.7,22:0.4,23:0.2}
+_C_MORNING_LUNCH= {0:0.1,1:0.1,2:0.1,3:0.1,4:0.15,5:0.3,6:0.7,7:1.2,8:1.4,9:1.3,10:1.1,11:1.2,12:1.0,13:0.8,14:0.6,15:0.5,16:0.4,17:0.4,18:0.4,19:0.3,20:0.2,21:0.15,22:0.1,23:0.1}
+_C_MIDDAY       = {0:0.1,1:0.1,2:0.1,3:0.1,4:0.1,5:0.2,6:0.3,7:0.5,8:0.7,9:0.9,10:1.2,11:1.4,12:1.5,13:1.4,14:1.3,15:1.1,16:1.0,17:0.8,18:0.6,19:0.5,20:0.3,21:0.2,22:0.15,23:0.1}
+_C_AFT_DINNER   = {0:0.1,1:0.1,2:0.1,3:0.1,4:0.1,5:0.15,6:0.3,7:0.4,8:0.5,9:0.6,10:0.7,11:0.9,12:1.0,13:1.1,14:1.2,15:1.3,16:1.4,17:1.5,18:1.5,19:1.4,20:1.2,21:1.0,22:0.6,23:0.3}
+
+
 class SyntheticDataGenerator:
     """Generates synthetic cook scheduling data for 7-Eleven hot food items."""
 
     ITEM_PROPERTIES = {
-        "pizza": {
-            "hold_time_hours": 2,
-            "lowest_cookable_unit": 6,
-            "exact_multiples": True,
-            "unit": "slices",
-            "equipment": "oven",
-        },
-        "wings_2h": {
-            "hold_time_hours": 2,
-            "lowest_cookable_unit": 5,
-            "exact_multiples": True,
-            "unit": "pieces",
-            "equipment": "oven",
-        },
-        "wings_4h": {
-            "hold_time_hours": 4,
-            "lowest_cookable_unit": 8,
-            "exact_multiples": True,
-            "unit": "pieces",
-            "equipment": "oven",
-        },
-        "taquitos": {
-            "hold_time_hours": 4,
-            "lowest_cookable_unit": 2,
-            "exact_multiples": False,
-            "unit": "pieces",
-            "equipment": "roller_grill",
-        },
-        "baked_goods": {
-            "hold_time_hours": 24,
-            "lowest_cookable_unit": 1,
-            "exact_multiples": False,
-            "unit": "pieces",
-            "equipment": "oven",
-        },
+        "wings_bone_in":      {"hold_time_hours": 2, "lowest_cookable_unit": 5,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "wings_boneless":     {"hold_time_hours": 2, "lowest_cookable_unit": 8,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "chicken_strip":      {"hold_time_hours": 2, "lowest_cookable_unit": 3,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "chicken_bite":       {"hold_time_hours": 2, "lowest_cookable_unit": 10, "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "quesadilla":         {"hold_time_hours": 2, "lowest_cookable_unit": 5,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "chicken_sandwich":   {"hold_time_hours": 2, "lowest_cookable_unit": 1,  "exact_multiples": True,  "unit": "sandwiches", "equipment": "oven"},
+        "potato_wedge":       {"hold_time_hours": 2, "lowest_cookable_unit": 10, "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "waffle_tot":         {"hold_time_hours": 2, "lowest_cookable_unit": 10, "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "hash_brown":         {"hold_time_hours": 2, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "empanada":           {"hold_time_hours": 2, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "chimichanga":        {"hold_time_hours": 2, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "jamaican_turnover":  {"hold_time_hours": 2, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "jamaican_patty":     {"hold_time_hours": 2, "lowest_cookable_unit": 1,  "exact_multiples": False, "unit": "pieces",     "equipment": "oven"},
+        "pupusa":             {"hold_time_hours": 2, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "beef_mini_taco":     {"hold_time_hours": 4, "lowest_cookable_unit": 8,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "garlic_knot":        {"hold_time_hours": 2, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "kolache":            {"hold_time_hours": 2, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "croissant":          {"hold_time_hours": 4, "lowest_cookable_unit": 1,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "breakfast_sandwich": {"hold_time_hours": 2, "lowest_cookable_unit": 1,  "exact_multiples": True,  "unit": "sandwiches", "equipment": "oven"},
+        "sweet_croissant":    {"hold_time_hours": 4, "lowest_cookable_unit": 6,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "danish":             {"hold_time_hours": 4, "lowest_cookable_unit": 6,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "pizza_slice":        {"hold_time_hours": 2, "lowest_cookable_unit": 6,  "exact_multiples": True,  "unit": "slices",     "equipment": "oven"},
+        "pizza_stuffed":      {"hold_time_hours": 2, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},
+        "hot_dog":            {"hold_time_hours": 4, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "grill"},
+        "sausage":            {"hold_time_hours": 4, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "grill"},
+        "taquito":            {"hold_time_hours": 4, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "grill"},
+        "buffalo_roller":     {"hold_time_hours": 4, "lowest_cookable_unit": 2,  "exact_multiples": False, "unit": "pieces",     "equipment": "grill"},
+        "corn_dog":           {"hold_time_hours": 4, "lowest_cookable_unit": 2,  "exact_multiples": True,  "unit": "pieces",     "equipment": "grill"},
     }
 
     # Probability that actual demand exceeds forecast in a given window,
@@ -64,15 +68,36 @@ class SyntheticDataGenerator:
         "highway": 0.7,
     }
 
-    # Base demand per window (units expected to sell within one hold-time window).
-    # Varies by time-of-day: demand is highest midday (11am-2pm) and evening (5pm-9pm).
-    # This curve is applied to a per-item base rate.
+    # Base demand per window (units expected to sell in one hold-time window)
     BASE_DEMAND_PER_WINDOW = {
-        "pizza": 6,
-        "wings_2h": 5,
-        "wings_4h": 8,
-        "taquitos": 5,
-        "baked_goods": 15,
+        "wings_bone_in":      5,
+        "wings_boneless":     6,
+        "chicken_strip":      5,
+        "chicken_bite":       5,
+        "quesadilla":         3,
+        "chicken_sandwich":   5,
+        "potato_wedge":       6,
+        "waffle_tot":         7,
+        "hash_brown":         4,
+        "empanada":           3,
+        "chimichanga":        3,
+        "jamaican_turnover":  2,
+        "jamaican_patty":     2,
+        "pupusa":             2,
+        "beef_mini_taco":     5,
+        "garlic_knot":        3,
+        "kolache":            3,
+        "croissant":          5,
+        "breakfast_sandwich": 5,
+        "sweet_croissant":    3,
+        "danish":             4,
+        "pizza_slice":        5,
+        "pizza_stuffed":      3,
+        "hot_dog":            5,
+        "sausage":            5,
+        "taquito":            6,
+        "buffalo_roller":     3,
+        "corn_dog":           4,
     }
 
     # Default time-of-day demand multiplier (fallback for items without specific curve)
@@ -84,56 +109,68 @@ class SyntheticDataGenerator:
         20: 1.2, 21: 0.8, 22: 0.5, 23: 0.3,
     }
 
-    # Item-specific time-of-day demand curves.
-    # Pizza peaks at lunch (11-14), wings peak at dinner (17-21),
-    # baked_goods peak in morning (7-10). This creates distinguishing signal.
+    # Item-specific time-of-day demand curves (references module-level curve constants)
     ITEM_TIME_CURVES = {
-        "pizza": {
-            0: 0.15, 1: 0.1, 2: 0.1, 3: 0.1, 4: 0.1, 5: 0.2,
-            6: 0.4, 7: 0.6, 8: 0.7, 9: 0.8,
-            10: 1.1, 11: 1.5, 12: 1.8, 13: 1.6, 14: 1.2,  # lunch peak
-            15: 0.9, 16: 0.8, 17: 0.9, 18: 1.0, 19: 1.0,
-            20: 0.8, 21: 0.6, 22: 0.4, 23: 0.2,
-        },
-        "wings_2h": {
-            0: 0.2, 1: 0.15, 2: 0.1, 3: 0.1, 4: 0.1, 5: 0.15,
-            6: 0.3, 7: 0.4, 8: 0.5, 9: 0.6,
-            10: 0.7, 11: 0.9, 12: 1.0, 13: 1.0, 14: 0.9,
-            15: 0.9, 16: 1.0, 17: 1.3, 18: 1.6, 19: 1.7,  # dinner peak
-            20: 1.5, 21: 1.2, 22: 0.7, 23: 0.4,
-        },
-        "wings_4h": {
-            0: 0.2, 1: 0.15, 2: 0.1, 3: 0.1, 4: 0.1, 5: 0.15,
-            6: 0.3, 7: 0.4, 8: 0.5, 9: 0.6,
-            10: 0.8, 11: 0.9, 12: 1.0, 13: 1.0, 14: 1.0,
-            15: 1.0, 16: 1.1, 17: 1.2, 18: 1.4, 19: 1.5,  # evening peak
-            20: 1.3, 21: 1.0, 22: 0.6, 23: 0.3,
-        },
-        "taquitos": {
-            0: 0.3, 1: 0.2, 2: 0.15, 3: 0.15, 4: 0.2, 5: 0.3,
-            6: 0.5, 7: 0.8, 8: 1.0, 9: 1.1,  # morning snack
-            10: 1.2, 11: 1.3, 12: 1.4, 13: 1.3, 14: 1.2,
-            15: 1.1, 16: 1.0, 17: 1.0, 18: 1.0, 19: 0.9,
-            20: 0.7, 21: 0.5, 22: 0.4, 23: 0.3,
-        },
-        "baked_goods": {
-            0: 0.1, 1: 0.1, 2: 0.1, 3: 0.1, 4: 0.1, 5: 0.2,
-            6: 0.8, 7: 1.3, 8: 1.5, 9: 1.4,  # morning peak
-            10: 1.2, 11: 1.0, 12: 0.9, 13: 0.8, 14: 0.7,
-            15: 0.7, 16: 0.7, 17: 0.6, 18: 0.5, 19: 0.4,
-            20: 0.3, 21: 0.2, 22: 0.15, 23: 0.1,
-        },
+        "wings_bone_in":      _C_DINNER,
+        "wings_boneless":     _C_DINNER,
+        "chicken_strip":      _C_LUNCH_DINNER,
+        "chicken_bite":       _C_LUNCH_DINNER,
+        "quesadilla":         _C_LUNCH,
+        "chicken_sandwich":   _C_LUNCH_DINNER,
+        "potato_wedge":       _C_LUNCH_DINNER,
+        "waffle_tot":         _C_MORNING_LUNCH,
+        "hash_brown":         _C_MORNING,
+        "empanada":           _C_MIDDAY,
+        "chimichanga":        _C_LUNCH,
+        "jamaican_turnover":  _C_MORNING_LUNCH,
+        "jamaican_patty":     _C_MIDDAY,
+        "pupusa":             _C_MIDDAY,
+        "beef_mini_taco":     _C_LUNCH,
+        "garlic_knot":        _C_AFT_DINNER,
+        "kolache":            _C_MORNING,
+        "croissant":          _C_MORNING,
+        "breakfast_sandwich": _C_MORNING,
+        "sweet_croissant":    _C_MORNING,
+        "danish":             _C_MORNING,
+        "pizza_slice":        _C_LUNCH,
+        "pizza_stuffed":      _C_LUNCH,
+        "hot_dog":            _C_ALL_DAY,
+        "sausage":            _C_ALL_DAY,
+        "taquito":            _C_ALL_DAY,
+        "buffalo_roller":     _C_AFT_DINNER,
+        "corn_dog":           _C_LUNCH_DINNER,
     }
 
-    # Item-specific waste propensity by store type.
-    # Higher value = more likely to have unsold units.
-    # Wings are wasted more at urban stores (over-ordered), pizza wastes more at highway.
+    # Item-specific waste propensity by store type (higher = more unsold units)
     ITEM_WASTE_MULTIPLIER = {
-        "pizza": {"urban": 0.8, "suburban": 1.0, "highway": 1.3},
-        "wings_2h": {"urban": 1.4, "suburban": 1.0, "highway": 0.7},
-        "wings_4h": {"urban": 1.2, "suburban": 1.0, "highway": 0.8},
-        "taquitos": {"urban": 0.9, "suburban": 1.0, "highway": 1.1},
-        "baked_goods": {"urban": 0.7, "suburban": 1.0, "highway": 1.5},
+        "wings_bone_in":      {"urban": 0.9, "suburban": 1.0, "highway": 1.2},
+        "wings_boneless":     {"urban": 0.9, "suburban": 1.0, "highway": 1.1},
+        "chicken_strip":      {"urban": 1.0, "suburban": 1.0, "highway": 1.1},
+        "chicken_bite":       {"urban": 1.0, "suburban": 1.0, "highway": 1.1},
+        "quesadilla":         {"urban": 0.9, "suburban": 1.0, "highway": 1.2},
+        "chicken_sandwich":   {"urban": 0.9, "suburban": 1.0, "highway": 1.1},
+        "potato_wedge":       {"urban": 1.0, "suburban": 1.0, "highway": 0.9},
+        "waffle_tot":         {"urban": 1.0, "suburban": 1.0, "highway": 1.0},
+        "hash_brown":         {"urban": 1.0, "suburban": 1.0, "highway": 1.0},
+        "empanada":           {"urban": 0.8, "suburban": 1.0, "highway": 1.4},
+        "chimichanga":        {"urban": 0.9, "suburban": 1.0, "highway": 1.3},
+        "jamaican_turnover":  {"urban": 0.8, "suburban": 1.0, "highway": 1.4},
+        "jamaican_patty":     {"urban": 0.8, "suburban": 1.0, "highway": 1.5},
+        "pupusa":             {"urban": 0.8, "suburban": 1.0, "highway": 1.5},
+        "beef_mini_taco":     {"urban": 0.9, "suburban": 1.0, "highway": 1.2},
+        "garlic_knot":        {"urban": 1.0, "suburban": 1.0, "highway": 1.1},
+        "kolache":            {"urban": 1.0, "suburban": 1.0, "highway": 1.0},
+        "croissant":          {"urban": 1.0, "suburban": 1.0, "highway": 1.1},
+        "breakfast_sandwich": {"urban": 1.0, "suburban": 1.0, "highway": 1.0},
+        "sweet_croissant":    {"urban": 1.0, "suburban": 1.0, "highway": 1.2},
+        "danish":             {"urban": 1.0, "suburban": 1.0, "highway": 1.2},
+        "pizza_slice":        {"urban": 0.8, "suburban": 1.0, "highway": 1.3},
+        "pizza_stuffed":      {"urban": 0.9, "suburban": 1.0, "highway": 1.2},
+        "hot_dog":            {"urban": 1.0, "suburban": 1.0, "highway": 0.9},
+        "sausage":            {"urban": 1.0, "suburban": 1.0, "highway": 0.9},
+        "taquito":            {"urban": 0.9, "suburban": 1.0, "highway": 1.0},
+        "buffalo_roller":     {"urban": 1.0, "suburban": 1.0, "highway": 1.1},
+        "corn_dog":           {"urban": 1.0, "suburban": 1.0, "highway": 0.9},
     }
 
     # Write-off quality distribution

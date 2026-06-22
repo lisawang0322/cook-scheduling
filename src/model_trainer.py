@@ -18,9 +18,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import classification_report, confusion_matrix
 
-
-# Fixed order of oven items (for consistent feature vector)
-OVEN_ITEMS = ["pizza", "wings_2h", "wings_4h", "baked_goods"]
+from src.pairwise_trainer import OVEN_ITEMS  # single source of truth for item list
 
 # Per-item feature columns (appended with item name prefix)
 ITEM_FEATURES = ["forecast_demand", "lcu", "hold_time", "time_remaining", "cooked_qty"]

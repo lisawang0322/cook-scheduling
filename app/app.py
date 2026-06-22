@@ -310,14 +310,14 @@ with col_queue:
                 unsafe_allow_html=True
             )
 
-    # 3. Parallel Roller Grill Box
+    # 3. Grill Items Note
     st.markdown(
         f"""
         <div class="grill-box">
-            <h4 style="margin: 0 0 8px 0; color: #1e3a8a;">🌯 Parallel Task: Roller Grill</h4>
+            <h4 style="margin: 0 0 8px 0; color: #1e3a8a;">� Grill Items (Scheduled)</h4>
             <div style="font-size: 14px; color: #1e40af;">
-                <b>Taquitos</b> cook automatically on the roller grill.
-                No scheduling is required. Fill grill to capacity based on standard morning setup.
+                <b>Hot dog, sausage, taquito, buffalo roller, and corn dog</b> use the roller grill
+                and are included in the scheduling queue.
                 <br>⏱️ <b>Grill Cook Time:</b> 20 mins | ⌛ <b>Hold Time:</b> 4 hrs
             </div>
         </div>
