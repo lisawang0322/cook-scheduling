@@ -1,0 +1,142 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-orange: var(--orange);
+  --color-orange-foreground: var(--orange-foreground);
+  --color-red-brand: var(--red-brand);
+  --color-red-brand-foreground: var(--red-brand-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: "Inter", "Helvetica Neue", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* 7-Eleven brand palette */
+  --background: oklch(0.985 0.005 95);
+  --foreground: oklch(0.18 0.02 160);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 160);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 160);
+
+  /* Hunter Green #006A4E */
+  --primary: oklch(0.46 0.11 162);
+  --primary-foreground: oklch(0.99 0.005 95);
+
+  --secondary: oklch(0.96 0.01 150);
+  --secondary-foreground: oklch(0.25 0.04 162);
+
+  --muted: oklch(0.96 0.005 110);
+  --muted-foreground: oklch(0.48 0.015 160);
+
+  --accent: oklch(0.95 0.02 150);
+  --accent-foreground: oklch(0.25 0.04 162);
+
+  /* Orange #F27224 */
+  --orange: oklch(0.72 0.18 50);
+  --orange-foreground: oklch(0.99 0 0);
+
+  /* Red #ED1C24 */
+  --red-brand: oklch(0.6 0.24 27);
+  --red-brand-foreground: oklch(0.99 0 0);
+
+  --warning: oklch(0.82 0.16 85);
+  --warning-foreground: oklch(0.25 0.05 80);
+
+  --success: oklch(0.62 0.15 155);
+  --success-foreground: oklch(0.99 0 0);
+
+  --destructive: oklch(0.6 0.24 27);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.9 0.01 150);
+  --input: oklch(0.92 0.01 150);
+  --ring: oklch(0.46 0.11 162);
+
+  --sidebar: oklch(0.34 0.07 162);
+  --sidebar-foreground: oklch(0.97 0.01 95);
+  --sidebar-primary: oklch(0.72 0.18 50);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.4 0.08 162);
+  --sidebar-accent-foreground: oklch(0.99 0.005 95);
+  --sidebar-border: oklch(0.3 0.06 162);
+  --sidebar-ring: oklch(0.72 0.18 50);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@utility brand-gradient {
+  background-image: linear-gradient(135deg, oklch(0.46 0.11 162), oklch(0.38 0.09 162));
+}
+
+@utility orange-gradient {
+  background-image: linear-gradient(135deg, oklch(0.74 0.18 55), oklch(0.65 0.2 40));
+}
+
+@utility card-lift {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -12px oklch(0.18 0.02 160 / 0.18);
+  }
+}
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.6 0.24 27 / 0.45); }
+  50% { box-shadow: 0 0 0 8px oklch(0.6 0.24 27 / 0); }
+}
+
+@utility pulse-red {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
