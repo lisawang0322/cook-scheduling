@@ -537,13 +537,14 @@ Full iteration history documenting each experiment, what was tried, and what was
 | **Labeling** | Same composite priority (convert to pairwise: "A before B?") |
 | **Model** | GradientBoostingClassifier, n=300, depth=5, lr=0.1, subsample=0.8 |
 | **Features** | 36 per pair (A features, B features, difference features, historical aggregates) |
-| **Training samples** | 11,466 pairs (from 5,290 scenarios) |
-| **Result** | Pairwise CV: **86.8%**, Top-1 ranking: **76.5%** |
-| **Improvement** | +42.3pp over v1, +12.3pp over v2 multiclass |
+| **Training samples** | 539,991 pairs (from 2,164 scenarios, 28-item retrain); *Sprint 1: 11,466 pairs from 5,290 scenarios* |
+| **Result** | Pairwise CV: **79.5%** ±0.1%, Top-1 ranking: **77.1%** (n=2,164) |
+| **Sprint 1 result** | Pairwise CV: 86.8%, Top-1: 76.5% (5-item, no temporal guard) |
+| **Improvement** | +18.5pp over v1 (58.6%), +13pp over v2 multiclass |
 
 **Key changes that drove the improvement:**
 
-1. **Pairwise reframing** — "Should A go before B?" is a cleaner learning target than "Which of 4 items goes first?" Each confusing pair (pizza vs wings_2h) gets dedicated training signal.
+1. **Pairwise reframing** — "Should A go before B?" is a cleaner learning target than "Which of 28 items goes first?" Each confusing pair gets dedicated training signal.
 
 2. **Historical features** — Computing `avg_writeoff_by_hour[item][hour]` and `avg_writeoff_by_store_type[item][store]` from all cook logs gave the model context that distinguishes otherwise-similar items.
 
@@ -551,18 +552,17 @@ Full iteration history documenting each experiment, what was tried, and what was
 
 4. **Difference features** — `diff_hold_time`, `diff_urgency`, `diff_demand_density` directly encode the pairwise comparison the model needs to make.
 
-**Top features learned:**
+**Top features learned (28-item retrain):**
 
 ```
-b_hist_wo_store          : 0.174  (historical writeoff by store type)
-b_hold_time              : 0.116  (item B's hold time)
-b_hist_wo_hour           : 0.106  (historical writeoff by hour)
-diff_hold_time           : 0.094  (hold time difference A-B)
-b_hist_wo_overall        : 0.075  (item B's overall avg writeoff)
-b_urgency                : 0.061  (item B's time pressure)
+diff_demand_density      : 0.551  (demand/LCU ratio difference A-B — dominant signal)
+diff_urgency             : 0.197  (urgency difference A-B)
+diff_hold_time           : 0.051  (hold time difference A-B)
+diff_time_remaining      : 0.048  (time remaining difference A-B)
+a_demand                 : 0.026  (item A's forecast demand)
 ```
 
-**Interpretation:** The model primarily decides based on item B's waste history and perishability. If B is historically wasteful at this store/hour, A should go first. The `diff_hold_time` feature captures perishability comparisons directly.
+**Interpretation:** Across 28 heterogeneous items, demand density difference is the strongest pairwise signal (+0.354pp over Sprint 1 where historical write-off features dominated). With 28 items, demand/LCU ratios vary much more widely than in the 5-item set, making the instantaneous features more discriminative.
 
 ---
 
@@ -572,26 +572,40 @@ b_urgency                : 0.061  (item B's time pressure)
 |-----------|--------|
 | **Labeling** | Same composite priority; add sample weights based on rank gap + waste difference |
 | **Model** | GradientBoostingClassifier, same hyperparams as v2.1 |
-| **Split** | Temporal: train on days 1–120 (Jan–Apr), test on days 121–180 (May–Jun) |
+| **Training samples** | 357,822 pairs (train partition only; 1,434 scenarios pre-cutoff) |
+| **Split** | Temporal: cutoff 2025-05-01; train 1,434 scenarios, test 730 scenarios |
 | **Historical features** | Computed ONLY from training period (prevents data leakage) |
-| **Weights** | Confident pairs (baked_goods vs pizza): weight 1.0; near-tied pairs (pizza vs wings_2h, both 0 waste): weight 0.33 |
-| **Result** | Train CV: **85.4%**, Honest test: **74.3%** |
-| **vs v2.1** | -2.0pp (the "honesty tax" — v2.1 leaked future data into historical features) |
+| **Weights** | High-confidence pairs (clear demand/urgency gap): weight 1.0; near-tied pairs (same urgency, both 0 waste): weight 0.33 (min 0.3); mean weight 0.523; 52.8% of pairs down-weighted |
+| **Result** | Pairwise CV: **79.6%** ±0.1%, Training acc: 79.2%, Honest test: **68.9%**, Full top-1: **72.2%** |
+| **Sprint 1 result** | CV 85.4%, Honest test 74.3% (5-item set, 1,747 test scenarios) |
+| **vs v2.1** | -8.2pp honest test (the "honesty + scale tax" — v2.1 had no temporal guard; 28-item problem is harder than 5-item) |
 
-**Lesson:** The temporal split reveals the model's true generalization ability. The small drop (-2pp) confirms the model isn't overfitting to temporal patterns — it genuinely learns item characteristics that persist over time.
+**Top features learned (28-item retrain):**
+
+```
+diff_demand_density      : 0.450  (demand/LCU ratio difference — dominant)
+diff_urgency             : 0.130  (urgency difference A-B)
+diff_demand              : 0.088  (raw demand difference)
+diff_hold_time           : 0.081  (hold time difference)
+a_cooked_qty             : 0.041  (already-cooked quantity for item A)
+diff_hist_wo_overall     : 0.018  (historical write-off diff — present but lower than Sprint 1)
+```
+
+**Lesson:** The temporal split reveals the model's true generalization ability. The larger drop vs Sprint 1 (-5.4pp: 74.3% → 68.9%) reflects both the honesty tax and the harder 28-item problem (more item confusion, lower base rate). The +60pp gap over associate proves strong lift regardless.
 
 ---
 
-#### Iteration 6: Enriched Synthetic Data + Associate Baseline
+#### Iteration 6: 28-Item Expansion + Associate Baseline
 
 | Dimension | Detail |
 |-----------|--------|
-| **Data generation** | Added item-specific time-of-day demand curves + item-specific waste propensity by store type |
-| **Pizza** | Peaks at lunch (11–14), 1.8× multiplier at noon |
-| **Wings (2h)** | Peaks at dinner (17–21), 1.7× at 7 PM |
-| **Baked goods** | Peaks in morning (7–10), 1.5× at 8 AM |
-| **Waste patterns** | Wings waste 1.4× more at urban stores; pizza wastes 1.3× more at highway stores |
-| **Associate baseline** | New `AssociateBaseline` class simulating real associate decision-making |
+| **Scope** | Expanded from 5 items to 28 items; 175K cook events, 3 store types, 180 days |
+| **Data generation** | Item-specific time-of-day demand curves + item-specific waste propensity by store type |
+| **Morning items** | `breakfast_sandwich`, `hash_brown`, `kolache`, `waffle_tot` peak 6–10 AM |
+| **Lunch/dinner items** | `chicken_sandwich`, `wings_bone_in`, `wings_boneless`, `quesadilla` peak 11 AM–8 PM |
+| **All-day items** | `pizza_slice`, `pizza_stuffed`, `beef_mini_taco`, `empanada`, `jamaican_patty` etc. distributed across dayparts |
+| **Waste patterns** | Urban stores: higher wing write-offs; highway stores: higher baked-goods write-offs |
+| **Associate baseline** | `AssociateBaseline` class simulating realistic (flawed) associate decision-making |
 
 **Associate Baseline — Observed Behavior Model:**
 
@@ -601,7 +615,7 @@ Associates don't use a formula. Based on store observations, their decision proc
 - **20% random/convenience:** Whatever is physically closest in the freezer. No decision logic at all.
 - **10% demand-checking:** Occasionally glance at the Food Planner forecast and pick the highest-demand item.
 
-This produces **55.0% accuracy** — better than pure random (~33%) but far below what's achievable with systematic decision-making.
+This produces **52.4% accuracy** on the 50-example shared eval — better than pure random (~33%) but far below what's achievable with systematic decision-making.
 
 **Final results with enriched data (28-item set, retrained Jun 2026):**
 
@@ -1175,5 +1189,5 @@ python notebooks/week7_model_training.py
 
 ---
 
-**Last Updated:** June 21, 2026  
+**Last Updated:** June 22, 2026  
 **Project Status:** Sprint 1 complete (Weeks 1–9) + 28-item expansion (Jun 2026). 28-item holdout: v1 58.6% • v2.2 68.9%. 5-item shared eval (re-run): v1 78.6% • v2.2 **81.0%** (+2.4pp) • LLM v0.2 64.0%. v2.2 is +60pp over associate on 28-item set. See [`SPRINT1_SUMMARY.md`](SPRINT1_SUMMARY.md) for Sprint 1 baseline.
