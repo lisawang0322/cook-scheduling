@@ -144,8 +144,6 @@ streamlit run app/app.py
 | P1 | **Docker deployment packaging** | ✅ Done | Single-command demo for stakeholders |
 | P1 | **Auto ML in Scenario Simulator** | ✅ Done | Preview and tablet flow use v2.2 by default |
 | P1 | **Divergence label validation** — interview 3 experienced associates on baked_goods spike scenarios | 🔲 Open | 0% on divergence is a signal to investigate the label, not (only) the prompt |
-| P2 | **Wire remaining React nav views** — enable Scenario Comparison, Impact Dashboard, What-If in sidebar | 🔲 Open | Components exist; need nav routing + polish |
+| P2 | **Wire remaining React nav views** — enable Impact Dashboard in sidebar | 🔲 Open | Components exist; need nav routing + polish |
 | P2 | **Adversarial hardening** — expand to 6 adversarial examples; test stronger constraint framing | 🔲 Open | 33.3% adversarial; ADV_03 is the specific failure case |
-| P2 | **Real-world validation** — compare recommendations vs actual write-off outcomes on live POS data | 🔲 Open | Formula-derived labels may not reflect true waste reduction |
 | P2 | **Model-faithful explanations (SHAP)** — replace template strings with GBM feature attributions | 🔲 Open | See `ARCHITECTURE_DECISIONS.md` Option A |
-| P3 | **v0.3 prompt** — chain-of-thought scratchpad ("think through windows before ranking") | 🔲 Open | May reveal whether LLM reasons correctly but gets confused by high demand numbers |

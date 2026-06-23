@@ -1,8 +1,8 @@
 {
   "metadata": {
     "prompt_version": "v0.2",
-    "llm_model": "skipped (ml-only re-run)",
-    "run_date": "2026-06-21T21:24:43"
+    "llm_model": "claude-sonnet-4-6",
+    "run_date": "2026-06-23T21:15:43"
   },
   "predictions": {
     "associate_floor": [
@@ -1624,11 +1624,11 @@
       },
       {
         "eval_id": "log_021",
-        "correct": false,
+        "correct": true,
         "outcome": "ranking",
         "pred": [
-          "wings_2h",
           "pizza",
+          "wings_2h",
           "wings_4h"
         ]
       },
@@ -1789,11 +1789,11 @@
       },
       {
         "eval_id": "int_V05",
-        "correct": true,
+        "correct": false,
         "outcome": "ranking",
         "pred": [
-          "wings_2h",
           "pizza",
+          "wings_2h",
           "baked_goods"
         ]
       },

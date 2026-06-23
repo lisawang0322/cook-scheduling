@@ -60,6 +60,68 @@ PREDICTIONS_PATH = os.path.join(PROJECT_ROOT, "output",  f"llm_eval_{PROMPT_VERS
 NO_LLM = "--no-llm" in sys.argv
 
 
+def _load_key_from_env_file(env_path: str) -> str | None:
+    """Load ANTHROPIC_API_KEY from .env, with tolerant parsing.
+
+    Supports both:
+      - ANTHROPIC_API_KEY=...
+      - export ANTHROPIC_API_KEY=...
+
+    Also tolerates accidental one-line raw-key files.
+    """
+    if not os.path.exists(env_path):
+        return None
+
+    raw_non_comment_lines: list[str] = []
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            raw_non_comment_lines.append(line)
+
+            if line.startswith("export "):
+                line = line[len("export "):].strip()
+
+            if "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            if key.strip() != "ANTHROPIC_API_KEY":
+                continue
+
+            value = value.strip()
+            if (value.startswith('"') and value.endswith('"')) or (
+                value.startswith("'") and value.endswith("'")
+            ):
+                value = value[1:-1]
+            return value or None
+
+    # Recovery path for accidental "raw key only" .env files.
+    if len(raw_non_comment_lines) == 1 and "=" not in raw_non_comment_lines[0]:
+        candidate = raw_non_comment_lines[0].strip()
+        return candidate or None
+
+    return None
+
+
+def resolve_anthropic_api_key() -> str:
+    """Resolve Anthropic API key from environment or PROJECT_ROOT/.env."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if api_key:
+        return api_key
+
+    api_key = _load_key_from_env_file(os.path.join(PROJECT_ROOT, ".env"))
+    if api_key:
+        os.environ["ANTHROPIC_API_KEY"] = api_key
+        return api_key
+
+    raise EnvironmentError(
+        "ANTHROPIC_API_KEY not set. Set it in env or add to PROJECT_ROOT/.env as "
+        "ANTHROPIC_API_KEY=your_key"
+    )
+
+
 # ===========================================================================
 # Prompt extraction
 # ===========================================================================
@@ -87,9 +149,23 @@ def load_eval_set() -> tuple[dict, list[dict]]:
     return data["metadata"], data["examples"]
 
 
+class _CompatUnpickler(pickle.Unpickler):
+    """Handle pickle files created with numpy 2.x or older sklearn _loss paths."""
+    def find_class(self, module: str, name: str):
+        try:
+            return super().find_class(module, name)
+        except ModuleNotFoundError:
+            if module == "_loss":
+                return super().find_class("sklearn._loss.loss", name)
+            if module.startswith("numpy._core"):
+                legacy_module = module.replace("numpy._core", "numpy.core", 1)
+                return super().find_class(legacy_module, name)
+            raise
+
+
 def load_v22_model() -> PairwiseModelTrainer:
     with open(MODEL_PATH, "rb") as f:
-        pkl = pickle.load(f)
+        pkl = _CompatUnpickler(f).load()
     trainer = PairwiseModelTrainer()
     trainer.model = pkl["model"]
     trainer.historical = pkl["historical"]
@@ -211,12 +287,7 @@ class V01LLMRanker:
         except ImportError as exc:
             raise ImportError("pip install anthropic") from exc
 
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise EnvironmentError(
-                "ANTHROPIC_API_KEY not set. "
-                "Export it before running: export ANTHROPIC_API_KEY=your_key"
-            )
+        api_key = resolve_anthropic_api_key()
         import anthropic
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
