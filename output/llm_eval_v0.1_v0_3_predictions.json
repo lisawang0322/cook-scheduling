@@ -1,0 +1,1095 @@
+{
+  "metadata": {
+    "prompt_version": "v0.1",
+    "llm_model": "skipped (ml-only re-run)",
+    "run_date": "2026-06-26T16:08:20"
+  },
+  "predictions": {
+    "associate_floor": [
+      {
+        "eval_id": "M01",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "kolache",
+          "breakfast_sandwich"
+        ]
+      },
+      {
+        "eval_id": "M02",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "M03",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "M04",
+        "correct": false,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 0.5,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_strip",
+          "quesadilla",
+          "chicken_sandwich"
+        ]
+      },
+      {
+        "eval_id": "M05",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "wings_bone_in"
+        ]
+      },
+      {
+        "eval_id": "M06",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "danish"
+        ]
+      },
+      {
+        "eval_id": "M07",
+        "correct": false,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "croissant"
+        ]
+      },
+      {
+        "eval_id": "M08",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "quesadilla",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "M09",
+        "correct": false,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "wings_bone_in",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "M10",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_boneless",
+          "wings_bone_in"
+        ]
+      },
+      {
+        "eval_id": "E01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "E02",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "croissant",
+          "breakfast_sandwich"
+        ]
+      },
+      {
+        "eval_id": "E03",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_sandwich",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "E04",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "E05",
+        "correct": false,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_strip",
+          "croissant"
+        ]
+      },
+      {
+        "eval_id": "E06",
+        "correct": false,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "danish"
+        ]
+      },
+      {
+        "eval_id": "E07",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "waffle_tot"
+        ]
+      },
+      {
+        "eval_id": "E08",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "croissant",
+          "breakfast_sandwich"
+        ]
+      },
+      {
+        "eval_id": "E09",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_boneless",
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "S01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "wings_boneless"
+        ]
+      },
+      {
+        "eval_id": "S02",
+        "correct": false,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "chicken_sandwich"
+        ]
+      },
+      {
+        "eval_id": "S03",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "quesadilla",
+          "wings_bone_in"
+        ]
+      },
+      {
+        "eval_id": "N01",
+        "correct": false,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "wings_bone_in",
+          "danish"
+        ]
+      },
+      {
+        "eval_id": "N02",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 2,
+        "outcome": "ranking",
+        "pred": [
+          "waffle_tot",
+          "kolache",
+          "breakfast_sandwich"
+        ]
+      },
+      {
+        "eval_id": "T01",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "wings_bone_in"
+        ]
+      },
+      {
+        "eval_id": "T02",
+        "correct": false,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "chicken_strip",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "T03",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "croissant",
+          "breakfast_sandwich"
+        ]
+      },
+      {
+        "eval_id": "OOS01",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "OOS02",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "OOS03",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "ADV01",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "ADV02",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      }
+    ],
+    "v1_rules": [
+      {
+        "eval_id": "M01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "breakfast_sandwich",
+          "kolache"
+        ]
+      },
+      {
+        "eval_id": "M02",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "M03",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "M04",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_sandwich",
+          "chicken_strip",
+          "quesadilla"
+        ]
+      },
+      {
+        "eval_id": "M05",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "M06",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "danish"
+        ]
+      },
+      {
+        "eval_id": "M07",
+        "correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "croissant",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "M08",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "quesadilla"
+        ]
+      },
+      {
+        "eval_id": "M09",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "M10",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "wings_boneless"
+        ]
+      },
+      {
+        "eval_id": "E01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "E02",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "breakfast_sandwich",
+          "croissant"
+        ]
+      },
+      {
+        "eval_id": "E03",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_sandwich",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "E04",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "E05",
+        "correct": false,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_strip",
+          "croissant"
+        ]
+      },
+      {
+        "eval_id": "E06",
+        "correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "danish",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "E07",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "waffle_tot"
+        ]
+      },
+      {
+        "eval_id": "E08",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "breakfast_sandwich",
+          "croissant"
+        ]
+      },
+      {
+        "eval_id": "E09",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_boneless",
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "S01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "wings_boneless"
+        ]
+      },
+      {
+        "eval_id": "S02",
+        "correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_sandwich",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "S03",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "quesadilla"
+        ]
+      },
+      {
+        "eval_id": "N01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice",
+          "danish"
+        ]
+      },
+      {
+        "eval_id": "N02",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "breakfast_sandwich",
+          "kolache",
+          "waffle_tot"
+        ]
+      },
+      {
+        "eval_id": "T01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "T02",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_strip",
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "T03",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "breakfast_sandwich",
+          "croissant"
+        ]
+      },
+      {
+        "eval_id": "OOS01",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "OOS02",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "OOS03",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "ADV01",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "ADV02",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      }
+    ],
+    "v2_2_ml": [
+      {
+        "eval_id": "M01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "breakfast_sandwich",
+          "kolache"
+        ]
+      },
+      {
+        "eval_id": "M02",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "M03",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "M04",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_sandwich",
+          "chicken_strip",
+          "quesadilla"
+        ]
+      },
+      {
+        "eval_id": "M05",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "M06",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "danish"
+        ]
+      },
+      {
+        "eval_id": "M07",
+        "correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "croissant",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "M08",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "quesadilla"
+        ]
+      },
+      {
+        "eval_id": "M09",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "M10",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "wings_boneless"
+        ]
+      },
+      {
+        "eval_id": "E01",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "pizza_slice",
+          "wings_bone_in"
+        ]
+      },
+      {
+        "eval_id": "E02",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "breakfast_sandwich",
+          "croissant"
+        ]
+      },
+      {
+        "eval_id": "E03",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_sandwich",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "E04",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "E05",
+        "correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "croissant",
+          "chicken_strip"
+        ]
+      },
+      {
+        "eval_id": "E06",
+        "correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "danish",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "E07",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "waffle_tot"
+        ]
+      },
+      {
+        "eval_id": "E08",
+        "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 1,
+        "outcome": "ranking",
+        "pred": [
+          "croissant",
+          "breakfast_sandwich"
+        ]
+      },
+      {
+        "eval_id": "E09",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_boneless",
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "S01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "wings_boneless"
+        ]
+      },
+      {
+        "eval_id": "S02",
+        "correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_sandwich",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "S03",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "quesadilla"
+        ]
+      },
+      {
+        "eval_id": "N01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice",
+          "danish"
+        ]
+      },
+      {
+        "eval_id": "N02",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "breakfast_sandwich",
+          "kolache",
+          "waffle_tot"
+        ]
+      },
+      {
+        "eval_id": "T01",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "wings_bone_in",
+          "pizza_slice"
+        ]
+      },
+      {
+        "eval_id": "T02",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "chicken_strip",
+          "pizza_slice",
+          "beef_mini_taco"
+        ]
+      },
+      {
+        "eval_id": "T03",
+        "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
+        "outcome": "ranking",
+        "pred": [
+          "breakfast_sandwich",
+          "croissant"
+        ]
+      },
+      {
+        "eval_id": "OOS01",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "OOS02",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "OOS03",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "ADV01",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      },
+      {
+        "eval_id": "ADV02",
+        "correct": null,
+        "outcome": "n/a",
+        "skipped": true
+      }
+    ]
+  }
+}

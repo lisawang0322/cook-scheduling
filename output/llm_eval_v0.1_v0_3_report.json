@@ -1,0 +1,193 @@
+{
+  "metadata": {
+    "run_date": "2026-06-26T16:08:20",
+    "eval_set_version": "v0.3",
+    "eval_set_path": "/Users/lisawang/CascadeProjects/cook-scheduling/data/llm_eval_set_v0.3.json",
+    "total_examples": 32,
+    "llm_model": "skipped",
+    "prompt_version": "v0.1",
+    "random_seed": 42,
+    "no_llm": true,
+    "source_distribution": {},
+    "tag_distribution": {
+      "modal": 10,
+      "edge": 9,
+      "stockout": 3,
+      "no_demand": 2,
+      "triage": 3,
+      "OOS": 3,
+      "adversarial": 2
+    },
+    "jtbd_metrics": "cook_now_accuracy: did model pick the right first item? cook_now_set_recall: fraction of urgent items in top-k. must_precede_violations: safety constraint violations (goal=0). refusal_accuracy: OOS/adversarial correctness. kendall_tau: full-order quality (secondary).",
+    "canonical_holdout_reference": {
+      "note": "Accuracy vs composite priority labels (data_labeler.py). v1 = label agreement on full dataset; v2.2 = temporal holdout test (>=2025-05-01). See output/v1_eval_report.json for v1 write-off optimality.",
+      "v1_rules_top1_pct": 58.6,
+      "v1_rules_n_decisions": 2164,
+      "v2_2_ml_top1_pct": 68.9,
+      "v2_2_ml_n_scenarios": 730,
+      "temporal_cutoff": "2025-05-01"
+    }
+  },
+  "results": {
+    "associate_floor": {
+      "name": "associate_floor",
+      "top1_accuracy": 29.6,
+      "ranking_accuracy": 29.6,
+      "refusal_accuracy": null,
+      "cook_now_accuracy": 59.3,
+      "cook_now_set_recall": 0.5741,
+      "must_precede_violations": 7,
+      "must_precede_violation_rate": 0.2593,
+      "kendall_tau_mean": -0.2346,
+      "latency_median_ms": 0.0,
+      "parse_failures": 0,
+      "ranking_evaluated": 27,
+      "refusal_evaluated": 0,
+      "evaluated": 27
+    },
+    "v1_rules": {
+      "name": "v1_rules",
+      "top1_accuracy": 92.6,
+      "ranking_accuracy": 92.6,
+      "refusal_accuracy": null,
+      "cook_now_accuracy": 85.2,
+      "cook_now_set_recall": 0.8519,
+      "must_precede_violations": 3,
+      "must_precede_violation_rate": 0.1111,
+      "kendall_tau_mean": 0.8519,
+      "latency_median_ms": 0.0,
+      "parse_failures": 0,
+      "ranking_evaluated": 27,
+      "refusal_evaluated": 0,
+      "evaluated": 27
+    },
+    "v2_2_ml": {
+      "name": "v2_2_ml",
+      "top1_accuracy": 88.9,
+      "ranking_accuracy": 88.9,
+      "refusal_accuracy": null,
+      "cook_now_accuracy": 74.1,
+      "cook_now_set_recall": 0.7407,
+      "must_precede_violations": 6,
+      "must_precede_violation_rate": 0.2222,
+      "kendall_tau_mean": 0.7778,
+      "latency_median_ms": 0.8,
+      "parse_failures": 0,
+      "ranking_evaluated": 27,
+      "refusal_evaluated": 0,
+      "evaluated": 27
+    }
+  },
+  "breakdowns": {
+    "by_category": {
+      "edge": {
+        "associate_floor": 44.4,
+        "v1_rules": 77.8,
+        "v2_2_ml": 66.7
+      },
+      "modal": {
+        "associate_floor": 30.0,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "no_demand": {
+        "associate_floor": 0.0,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "stockout": {
+        "associate_floor": 33.3,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "triage": {
+        "associate_floor": 0.0,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      }
+    },
+    "by_source": {
+      "hand": {
+        "associate_floor": 29.6,
+        "v1_rules": 92.6,
+        "v2_2_ml": 88.9
+      }
+    },
+    "by_eval_tag": {
+      "divergence": {
+        "associate_floor": 33.3,
+        "v1_rules": 100.0,
+        "v2_2_ml": 66.7
+      },
+      "edge": {
+        "associate_floor": 40.0,
+        "v1_rules": 80.0,
+        "v2_2_ml": 70.0
+      },
+      "modal": {
+        "associate_floor": 30.0,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "no_demand": {
+        "associate_floor": 0.0,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "stockout": {
+        "associate_floor": 33.3,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "triage": {
+        "associate_floor": 0.0,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "waste_avoidance": {
+        "associate_floor": 50.0,
+        "v1_rules": 75.0,
+        "v2_2_ml": 50.0
+      }
+    },
+    "by_store_type": {
+      "highway": {
+        "associate_floor": 40.0,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "suburban": {
+        "associate_floor": 25.0,
+        "v1_rules": 87.5,
+        "v2_2_ml": 100.0
+      },
+      "urban": {
+        "associate_floor": 28.6,
+        "v1_rules": 92.9,
+        "v2_2_ml": 78.6
+      }
+    },
+    "by_hour_band": {
+      "afternoon": {
+        "associate_floor": 16.7,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "evening": {
+        "associate_floor": 50.0,
+        "v1_rules": 100.0,
+        "v2_2_ml": 100.0
+      },
+      "lunch": {
+        "associate_floor": 44.4,
+        "v1_rules": 88.9,
+        "v2_2_ml": 77.8
+      },
+      "morning": {
+        "associate_floor": 20.0,
+        "v1_rules": 90.0,
+        "v2_2_ml": 90.0
+      }
+    }
+  }
+}

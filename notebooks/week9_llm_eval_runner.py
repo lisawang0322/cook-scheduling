@@ -1,27 +1,27 @@
-"""Week 9 — LLM Evaluation Runner: v0.1 Prompt on 50-Example Curated Set.
+"""LLM Evaluation Runner — multi-eval-set, multi-prompt, JTBD-aligned metrics.
 
-Runs the v0.1 system prompt (prompts/v0.1_system_prompt.md) against the
-curated 50-example evaluation set (data/llm_eval_set_v0.1.json) and compares
-LLM zero-shot against v1 rules and v2.2 ML across three breakdowns:
+Supports three eval sets:
+  v0.1  50-example legacy set (5-item universe, data/llm_eval_set_v0.1.json)
+  v0.2  53-example 28-item set (data/llm_eval_set_v0.2.json)
+  v0.3  32-example JTBD plain-language set (data/llm_eval_set_v0.3.json)
 
-  - By source       (synthetic_logs / synthetic_constructed / simulated_interview)
-  - By eval_tags    (accuracy / edge_case / divergence)
-  - By store_type   (urban / suburban / highway)
-  - By hour_band    (morning / lunch / afternoon / evening)
-
-Metrics: top-1 accuracy (matches week8 metric for fair comparison),
-         Kendall's tau (full ranking quality), parse failures.
-
-LLM is run zero-shot with the v0.1 system prompt body extracted from
-prompts/v0.1_system_prompt.md. The few-shot examples in week8 are NOT
-used here — this tests the prompt alone.
+Metrics (v0.3 JTBD-aligned, also computed for v0.1/v0.2 where ground truth allows):
+  cook_now_accuracy       — did the model pick the right first item?
+  cook_now_set_recall     — fraction of urgent items that landed in the top-k
+  must_precede_violations — A-before-B safety violations (goal = 0)
+  refusal_accuracy        — OOS / adversarial examples (trust dimension)
+  kendall_tau_mean        — full-order quality (secondary)
 
 Usage:
   export ANTHROPIC_API_KEY=your_key
-  python notebooks/week9_llm_eval_runner.py
 
-  To skip LLM (dry run, v1+v2.2 only):
-  python notebooks/week9_llm_eval_runner.py --no-llm
+  # v0.1 / v0.2 sets (data format, legacy metrics)
+  python notebooks/week9_llm_eval_runner.py --prompt-version=v0.2
+  python notebooks/week9_llm_eval_runner.py --eval-set=v0.2 --prompt-version=v0.2
+
+  # v0.3 JTBD plain-language set
+  python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3
+  python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --no-llm  # ML baselines only
 """
 
 import json
@@ -43,10 +43,16 @@ sys.path.insert(0, PROJECT_ROOT)
 from src.cook_scheduler import CookSchedulerV1, AssociateBaseline
 from src.pairwise_trainer import PairwiseModelTrainer, OVEN_ITEMS
 
-EVAL_SET_PATH   = os.path.join(PROJECT_ROOT, "data",   "llm_eval_set_v0.1.json")
-MODEL_PATH      = os.path.join(PROJECT_ROOT, "models",  "v2_2_pairwise_temporal.pkl")
+MODEL_PATH      = os.path.join(PROJECT_ROOT, "models", "v2_2_pairwise_temporal.pkl")
 LLM_MODEL       = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 RANDOM_SEED     = 42
+
+# Eval set version from --eval-set=vX.Y CLI arg (default: v0.1)
+EVAL_SET_VERSION = next(
+    (a.split("=", 1)[1] for a in sys.argv if a.startswith("--eval-set=")),
+    "v0.1",
+)
+EVAL_SET_PATH = os.path.join(PROJECT_ROOT, "data", f"llm_eval_set_{EVAL_SET_VERSION}.json")
 
 # Prompt version from --prompt-version=vX.Y CLI arg (default: v0.1)
 PROMPT_VERSION  = next(
@@ -54,72 +60,13 @@ PROMPT_VERSION  = next(
     "v0.1",
 )
 PROMPT_PATH      = os.path.join(PROJECT_ROOT, "prompts", f"{PROMPT_VERSION}_system_prompt.md")
-OUTPUT_PATH      = os.path.join(PROJECT_ROOT, "output",  f"llm_eval_{PROMPT_VERSION}_report.json")
-PREDICTIONS_PATH = os.path.join(PROJECT_ROOT, "output",  f"llm_eval_{PROMPT_VERSION}_predictions.json")
+
+# Output filenames encode both prompt and eval-set versions to avoid collisions
+_eval_suffix     = "" if EVAL_SET_VERSION == "v0.1" else f"_{EVAL_SET_VERSION.replace('.', '_')}"
+OUTPUT_PATH      = os.path.join(PROJECT_ROOT, "output", f"llm_eval_{PROMPT_VERSION}{_eval_suffix}_report.json")
+PREDICTIONS_PATH = os.path.join(PROJECT_ROOT, "output", f"llm_eval_{PROMPT_VERSION}{_eval_suffix}_predictions.json")
 
 NO_LLM = "--no-llm" in sys.argv
-
-
-def _load_key_from_env_file(env_path: str) -> str | None:
-    """Load ANTHROPIC_API_KEY from .env, with tolerant parsing.
-
-    Supports both:
-      - ANTHROPIC_API_KEY=...
-      - export ANTHROPIC_API_KEY=...
-
-    Also tolerates accidental one-line raw-key files.
-    """
-    if not os.path.exists(env_path):
-        return None
-
-    raw_non_comment_lines: list[str] = []
-    with open(env_path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            raw_non_comment_lines.append(line)
-
-            if line.startswith("export "):
-                line = line[len("export "):].strip()
-
-            if "=" not in line:
-                continue
-
-            key, value = line.split("=", 1)
-            if key.strip() != "ANTHROPIC_API_KEY":
-                continue
-
-            value = value.strip()
-            if (value.startswith('"') and value.endswith('"')) or (
-                value.startswith("'") and value.endswith("'")
-            ):
-                value = value[1:-1]
-            return value or None
-
-    # Recovery path for accidental "raw key only" .env files.
-    if len(raw_non_comment_lines) == 1 and "=" not in raw_non_comment_lines[0]:
-        candidate = raw_non_comment_lines[0].strip()
-        return candidate or None
-
-    return None
-
-
-def resolve_anthropic_api_key() -> str:
-    """Resolve Anthropic API key from environment or PROJECT_ROOT/.env."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if api_key:
-        return api_key
-
-    api_key = _load_key_from_env_file(os.path.join(PROJECT_ROOT, ".env"))
-    if api_key:
-        os.environ["ANTHROPIC_API_KEY"] = api_key
-        return api_key
-
-    raise EnvironmentError(
-        "ANTHROPIC_API_KEY not set. Set it in env or add to PROJECT_ROOT/.env as "
-        "ANTHROPIC_API_KEY=your_key"
-    )
 
 
 # ===========================================================================
@@ -144,32 +91,35 @@ def load_system_prompt() -> str:
 # ===========================================================================
 
 def load_eval_set() -> tuple[dict, list[dict]]:
+    if not os.path.exists(EVAL_SET_PATH):
+        raise FileNotFoundError(
+            f"Eval set not found: {EVAL_SET_PATH}. "
+            f"Run: python scripts/build_eval_set_{EVAL_SET_VERSION.replace('.', '_')}.py"
+        )
     with open(EVAL_SET_PATH) as f:
         data = json.load(f)
     return data["metadata"], data["examples"]
 
 
-class _CompatUnpickler(pickle.Unpickler):
-    """Handle pickle files created with numpy 2.x or older sklearn _loss paths."""
-    def find_class(self, module: str, name: str):
-        try:
-            return super().find_class(module, name)
-        except ModuleNotFoundError:
-            if module == "_loss":
-                return super().find_class("sklearn._loss.loss", name)
-            if module.startswith("numpy._core"):
-                legacy_module = module.replace("numpy._core", "numpy.core", 1)
-                return super().find_class(legacy_module, name)
-            raise
-
-
 def load_v22_model() -> PairwiseModelTrainer:
     with open(MODEL_PATH, "rb") as f:
-        pkl = _CompatUnpickler(f).load()
+        pkl = pickle.load(f)
     trainer = PairwiseModelTrainer()
     trainer.model = pkl["model"]
     trainer.historical = pkl["historical"]
     return trainer
+
+
+def try_load_v22_model() -> PairwiseModelTrainer | None:
+    """Load v2.2 model; return None if pickle is missing or corrupt."""
+    if not os.path.exists(MODEL_PATH):
+        print(f"  WARNING: v2.2 model not found at {MODEL_PATH}; skipping v2_2_ml")
+        return None
+    try:
+        return load_v22_model()
+    except Exception as exc:
+        print(f"  WARNING: v2.2 model unavailable ({type(exc).__name__}: {exc}); skipping v2_2_ml")
+        return None
 
 
 # ===========================================================================
@@ -183,7 +133,17 @@ def present_items(features: dict) -> list[str]:
     return ordered + extras
 
 
-def rank_v1(scheduler: CookSchedulerV1, features: dict) -> list[str] | None:
+def _extract_features(ex_or_features: dict) -> dict:
+    """Accept either a full example dict or a flat features dict."""
+    if "features" in ex_or_features and isinstance(ex_or_features["features"], dict):
+        return ex_or_features["features"]
+    return ex_or_features
+
+
+def rank_v1(scheduler: CookSchedulerV1, ex_or_features: dict) -> list[str] | None:
+    features = _extract_features(ex_or_features)
+    if not present_items(features):
+        return None
     decision_hour = features["decision_hour"] + 0.25
     pending = []
     for item in present_items(features):
@@ -200,7 +160,8 @@ def rank_v1(scheduler: CookSchedulerV1, features: dict) -> list[str] | None:
     return [r["item"] for r in ranked] if ranked else None
 
 
-def rank_v22(trainer: PairwiseModelTrainer, features: dict) -> list[str] | None:
+def rank_v22(trainer: PairwiseModelTrainer, ex_or_features: dict) -> list[str] | None:
+    features = _extract_features(ex_or_features)
     items = present_items(features)
     return trainer.rank_items(features, items) if items else None
 
@@ -217,14 +178,15 @@ def build_oven_events(features: dict) -> list[dict]:
     ]
 
 
-def rank_associate(associate: AssociateBaseline, features: dict) -> list[str] | None:
+def rank_associate(associate: AssociateBaseline, ex_or_features: dict) -> list[str] | None:
     """Realistic associate floor (habit/expiration/random mix) on the same set."""
+    features = _extract_features(ex_or_features)
     events = build_oven_events(features)
     return associate.rank_items(events) if events else None
 
 
-def build_llm_user_prompt(features: dict) -> str:
-    """Format a decision scenario into the user-turn message.
+def build_llm_user_prompt_from_features(features: dict) -> str:
+    """Format a numeric decision scenario into the user-turn message (v0.1/v0.2 format).
 
     Associate-legible view: no demand_density (a formula term). LCU is shown as
     the physical tray size an associate knows, not as a computed ratio.
@@ -248,6 +210,31 @@ def build_llm_user_prompt(features: dict) -> str:
         f"  Hour       : {features['decision_hour']}:00\n\n"
         f"Items present:\n" + "\n".join(items_lines)
     )
+
+
+def build_llm_user_prompt(example: dict) -> str:
+    """Build the LLM user message for any eval-set version.
+
+    For v0.3 plain-language examples: sends scenario_text verbatim, then
+    appends the canonical item IDs so the LLM knows what strings to put in
+    ranked_queue.
+
+    For v0.1/v0.2: falls back to the numeric feature-table format.
+    """
+    scenario_text = example.get("scenario_text")
+    features = example.get("features") or {}
+
+    if scenario_text:
+        items = present_items(features)
+        if items:
+            id_hint = (
+                "\n\nItem IDs to use in your ranked_queue (use these exact strings):\n  "
+                + ", ".join(items)
+            )
+        else:
+            id_hint = ""
+        return scenario_text + id_hint
+    return build_llm_user_prompt_from_features(features)
 
 
 def is_refusal_response(text: str) -> bool:
@@ -287,19 +274,32 @@ class V01LLMRanker:
         except ImportError as exc:
             raise ImportError("pip install anthropic") from exc
 
-        api_key = resolve_anthropic_api_key()
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise EnvironmentError(
+                "ANTHROPIC_API_KEY not set. "
+                "Export it before running: export ANTHROPIC_API_KEY=your_key"
+            )
         import anthropic
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
         self.system_prompt = load_system_prompt()
 
-    def rank(self, features: dict) -> list[str] | None:
+    def rank(self, ex_or_features: dict) -> list[str] | None:
+        """Rank items for an example.
+
+        Accepts either a full example dict (eval_id, features, scenario_text…)
+        or a bare features dict (backward compat with v0.1/v0.2 callers).
+        For v0.3 plain-language examples, scenario_text is sent verbatim.
+        """
+        features = _extract_features(ex_or_features)
         present = present_items(features)
-        user_msg = build_llm_user_prompt(features)
+        # Full example dict → use scenario_text if available
+        user_msg = build_llm_user_prompt(ex_or_features)
         try:
             message = self.client.messages.create(
                 model=self.model,
-                max_tokens=128,
+                max_tokens=256,
                 system=self.system_prompt,
                 messages=[{"role": "user", "content": user_msg}],
             )
@@ -329,8 +329,42 @@ class V01LLMRanker:
 
 
 # ===========================================================================
-# Evaluation helpers
+# Evaluation helpers — JTBD-aligned metrics
 # ===========================================================================
+
+def compute_cook_now_accuracy(pred: list[str], cook_now: str | None, cook_now_set: list[str]) -> bool | None:
+    """True if pred[0] is in cook_now_set (or equals cook_now when set is empty)."""
+    if not pred:
+        return None
+    urgent = cook_now_set if cook_now_set else ([cook_now] if cook_now else [])
+    if not urgent:
+        return None
+    return pred[0] in urgent
+
+
+def compute_cook_now_set_recall(pred: list[str], cook_now_set: list[str]) -> float | None:
+    """Fraction of urgent items that appear in pred[:k] where k = len(cook_now_set)."""
+    if not pred or not cook_now_set:
+        return None
+    k = len(cook_now_set)
+    top_k = set(pred[:k])
+    return sum(1 for item in cook_now_set if item in top_k) / k
+
+
+def compute_must_precede_violations(pred: list[str], must_precede: list[list[str]]) -> int:
+    """Count [A, B] pairs where A appears *after* B in pred (safety violation)."""
+    if not pred or not must_precede:
+        return 0
+    pos = {item: i for i, item in enumerate(pred)}
+    violations = 0
+    for pair in must_precede:
+        if len(pair) != 2:
+            continue
+        a, b = pair
+        if a in pos and b in pos and pos[a] > pos[b]:
+            violations += 1
+    return violations
+
 
 def compute_tau(pred: list[str], truth: list[str]) -> float | None:
     if len(pred) < 2 or set(pred) != set(truth):
@@ -357,12 +391,20 @@ def evaluate_comparator(
     latencies: list[float] = []
     parse_failures = 0
 
+    # JTBD metrics
+    cook_now_correct_list: list[bool] = []
+    set_recall_list: list[float] = []
+    must_precede_total_violations = 0
+
     per_example: list[dict] = []
 
     for ex in examples:
-        features    = ex["features"]
+        features    = _extract_features(ex)
         truth_order = ex.get("optimal_order") or []
         truth_first = ex.get("optimal_first_item")
+        cook_now      = ex.get("cook_now") or truth_first
+        cook_now_set  = ex.get("cook_now_set") or ([cook_now] if cook_now else [])
+        must_precede  = ex.get("must_precede") or []
         is_refusal_ex = any(t in ("OOS", "adversarial") for t in ex.get("eval_tags", []))
 
         if is_refusal_ex:
@@ -370,7 +412,7 @@ def evaluate_comparator(
                 per_example.append({"eval_id": ex["eval_id"], "correct": None,
                                      "outcome": "n/a", "skipped": True})
                 continue
-            input_text = ex.get("refusal_input", "")
+            input_text = ex.get("refusal_input") or ex.get("scenario_text", "")
             if not input_text:
                 per_example.append({"eval_id": ex["eval_id"], "correct": None,
                                      "outcome": "n/a", "skipped": True})
@@ -389,13 +431,14 @@ def evaluate_comparator(
             })
             continue
 
-        # Skip non-ranking examples that have no truth label
-        if not features or not truth_first:
+        # Skip non-ranking examples with no truth label and no numeric features
+        if not features or not cook_now:
             per_example.append({"eval_id": ex["eval_id"], "correct": None, "pred": None, "skipped": True})
             continue
 
         t0 = time.time()
-        pred = rank_fn(features)
+        # Pass the full example dict so LLM rankers can access scenario_text
+        pred = rank_fn(ex)
         latency_ms = (time.time() - t0) * 1000
 
         if pred is None:
@@ -405,7 +448,23 @@ def evaluate_comparator(
             continue
 
         latencies.append(latency_ms)
-        correct = pred[0] == truth_first
+
+        # JTBD headline: cook_now_accuracy
+        cn_correct = compute_cook_now_accuracy(pred, cook_now, cook_now_set)
+        if cn_correct is not None:
+            cook_now_correct_list.append(cn_correct)
+
+        # cook_now_set recall
+        sr = compute_cook_now_set_recall(pred, cook_now_set)
+        if sr is not None:
+            set_recall_list.append(sr)
+
+        # must_precede violations
+        mp_viol = compute_must_precede_violations(pred, must_precede)
+        must_precede_total_violations += mp_viol
+
+        # Classic top-1 vs formula optimal (secondary for v0.3)
+        correct = pred[0] == truth_first if truth_first else cn_correct
         ranking_evaluated += 1
         if correct:
             ranking_correct += 1
@@ -415,26 +474,36 @@ def evaluate_comparator(
             taus.append(tau)
 
         per_example.append({
-            "eval_id": ex["eval_id"],
-            "correct": correct,
-            "outcome": "ranking",
-            "pred": pred,
+            "eval_id":                ex["eval_id"],
+            "correct":                correct,
+            "cook_now_correct":       cn_correct,
+            "cook_now_set_recall":    sr,
+            "must_precede_violations": mp_viol,
+            "outcome":                "ranking",
+            "pred":                   pred,
         })
 
     total_evaluated = ranking_evaluated + refusal_evaluated
     total_correct   = ranking_correct   + refusal_correct
+    cn_n            = len(cook_now_correct_list)
     return {
-        "name": name,
-        "top1_accuracy": round(100 * total_correct / total_evaluated, 1) if total_evaluated else 0,
-        "ranking_accuracy": round(100 * ranking_correct / ranking_evaluated, 1) if ranking_evaluated else None,
-        "refusal_accuracy": round(100 * refusal_correct / refusal_evaluated, 1) if refusal_evaluated else None,
-        "kendall_tau_mean": round(float(np.mean(taus)), 4) if taus else None,
-        "latency_median_ms": round(float(np.median(latencies)), 1) if latencies else None,
-        "parse_failures": parse_failures,
-        "ranking_evaluated": ranking_evaluated,
-        "refusal_evaluated": refusal_evaluated,
-        "evaluated": total_evaluated,
-        "per_example": per_example,
+        "name":                       name,
+        "top1_accuracy":              round(100 * total_correct / total_evaluated, 1) if total_evaluated else 0,
+        "ranking_accuracy":           round(100 * ranking_correct / ranking_evaluated, 1) if ranking_evaluated else None,
+        "refusal_accuracy":           round(100 * refusal_correct / refusal_evaluated, 1) if refusal_evaluated else None,
+        # JTBD-aligned metrics
+        "cook_now_accuracy":          round(100 * sum(cook_now_correct_list) / cn_n, 1) if cn_n else None,
+        "cook_now_set_recall":        round(float(np.mean(set_recall_list)), 4) if set_recall_list else None,
+        "must_precede_violations":    must_precede_total_violations,
+        "must_precede_violation_rate": round(must_precede_total_violations / ranking_evaluated, 4) if ranking_evaluated else None,
+        # Standard metrics
+        "kendall_tau_mean":           round(float(np.mean(taus)), 4) if taus else None,
+        "latency_median_ms":          round(float(np.median(latencies)), 1) if latencies else None,
+        "parse_failures":             parse_failures,
+        "ranking_evaluated":          ranking_evaluated,
+        "refusal_evaluated":          refusal_evaluated,
+        "evaluated":                  total_evaluated,
+        "per_example":                per_example,
     }
 
 
@@ -527,42 +596,44 @@ def category_breakdown(
 
 def main() -> None:
     print("=" * 64)
-    print(f"  WEEK 9 — LLM EVAL RUNNER (prompt {PROMPT_VERSION}, 50-example set)")
+    print(f"  LLM EVAL RUNNER  eval-set={EVAL_SET_VERSION}  prompt={PROMPT_VERSION}")
     print("=" * 64)
 
     # --- Load artifacts ---
     print("\n[1/5] Loading eval set and models...")
     meta, examples = load_eval_set()
-    print(f"  Eval set : {len(examples)} examples (v{meta['version']})")
-    print(f"  Sources  : {meta['sources']}")
+    print(f"  Eval set  : {len(examples)} examples ({meta['version']})")
+    print(f"  Eval path : {EVAL_SET_PATH}")
+    if "sources" in meta:
+        print(f"  Sources   : {meta['sources']}")
 
     system_prompt_preview = load_system_prompt()[:80].replace("\n", " ")
-    print(f"  Prompt   : {system_prompt_preview}...")
+    print(f"  Prompt    : {system_prompt_preview}...")
 
     scheduler = CookSchedulerV1()
-    pw_model  = load_v22_model()
+    pw_model  = try_load_v22_model()
     associate = AssociateBaseline(seed=RANDOM_SEED)
-    print("  associate baseline + v1 + v2.2 loaded")
+    print("  associate baseline + v1 loaded" + (" + v2.2 loaded" if pw_model else " (v2.2 skipped)"))
 
     # --- Set up comparators ---
     print("\n[2/5] Setting up comparators...")
 
-    # Comparators ordered as the floor → ceiling → ML story:
-    #   associate_floor (realistic, flawed) ... llm_v01 (idealized associate ceiling)
     rank_fns: dict[str, Any] = {
-        "associate_floor": lambda f: rank_associate(associate, f),
-        "v1_rules": lambda f: rank_v1(scheduler, f),
-        "v2_2_ml":  lambda f: rank_v22(pw_model, f),
+        "associate_floor": lambda ex: rank_associate(associate, ex),
+        "v1_rules":        lambda ex: rank_v1(scheduler, ex),
     }
+    if pw_model is not None:
+        rank_fns["v2_2_ml"] = lambda ex: rank_v22(pw_model, ex)
+
     refusal_fns: dict[str, Any] = {}
 
     if NO_LLM:
-        print("  LLM skipped (--no-llm flag). Running v1 + v2.2 only.")
+        print("  LLM skipped (--no-llm flag). Running ML baselines only.")
     else:
         print(f"  Initialising LLM ranker ({LLM_MODEL}, prompt {PROMPT_VERSION})...")
         llm = V01LLMRanker()
         llm_key = f"llm_{PROMPT_VERSION}_zero_shot"
-        rank_fns[llm_key] = lambda f: llm.rank(f)
+        rank_fns[llm_key] = lambda ex: llm.rank(ex)
         refusal_fns[llm_key] = llm.check_refusal
         n_ranking  = sum(1 for ex in examples if not any(t in ("OOS", "adversarial") for t in ex.get("eval_tags", [])))
         n_refusal  = len(examples) - n_ranking
@@ -585,15 +656,19 @@ def main() -> None:
     by_hour_band = slice_breakdown(examples, results, "hour_band")
 
     # --- Print summary ---
-    print("\n" + "=" * 64)
-    print("  RESULTS — Overall Top-1 Accuracy")
-    print("=" * 64)
+    print("\n" + "=" * 72)
+    print("  RESULTS — JTBD Metrics")
+    print("=" * 72)
     comp_names = list(results.keys())
-    print(f"\n  {'Comparator':<22s} {'Top-1%':>7s} {'Kendall τ':>10s} {'Failures':>9s}")
-    print(f"  {'-'*22} {'-'*7} {'-'*10} {'-'*9}")
+    print(f"\n  {'Comparator':<22s} {'CookNow%':>9s} {'SetRecall':>10s} {'MPViol':>7s} {'τ':>8s} {'Fail':>5s}")
+    print(f"  {'-'*22} {'-'*9} {'-'*10} {'-'*7} {'-'*8} {'-'*5}")
     for name, r in results.items():
-        tau_str = f"{r['kendall_tau_mean']:.3f}" if r["kendall_tau_mean"] is not None else "   n/a"
-        print(f"  {name:<22s} {r['top1_accuracy']:>6.1f}% {tau_str:>10s} {r['parse_failures']:>8d}")
+        cn  = f"{r['cook_now_accuracy']:.1f}%" if r.get("cook_now_accuracy") is not None else "   n/a"
+        sr  = f"{r['cook_now_set_recall']:.3f}"  if r.get("cook_now_set_recall") is not None else "    n/a"
+        mpv = str(r.get("must_precede_violations", 0))
+        tau = f"{r['kendall_tau_mean']:.3f}" if r.get("kendall_tau_mean") is not None else "    n/a"
+        fail = str(r.get("parse_failures", 0))
+        print(f"  {name:<22s} {cn:>9s} {sr:>10s} {mpv:>7s} {tau:>8s} {fail:>5s}")
 
     print("\n  By Source:")
     print(f"  {'Source':<25s}", end="")
@@ -646,12 +721,13 @@ def main() -> None:
     # --- Dump per-example predictions ---
     # Always save ML predictions; when --no-llm, merge LLM predictions from existing file.
     existing_llm_preds: dict = {}
+    ml_comparator_names = {k for k in rank_fns if not k.startswith("llm_")}
     if NO_LLM and os.path.exists(PREDICTIONS_PATH):
         try:
             with open(PREDICTIONS_PATH) as f:
                 existing = json.load(f)
             for name, preds in existing.get("predictions", {}).items():
-                if name not in ("associate_floor", "v1_rules", "v2_2_ml"):
+                if name not in ml_comparator_names:
                     existing_llm_preds[name] = preds
         except Exception:
             pass
@@ -700,23 +776,20 @@ def main() -> None:
         "metadata": {
             "run_date": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "eval_set_version": meta["version"],
+            "eval_set_path": EVAL_SET_PATH,
             "total_examples": len(examples),
             "llm_model": LLM_MODEL if not NO_LLM else "skipped",
             "prompt_version": PROMPT_VERSION,
             "random_seed": RANDOM_SEED,
             "no_llm": NO_LLM,
-            "source_distribution": meta["sources"],
-            "tag_distribution": meta.get("csv_tag_distribution", meta.get("tag_distribution", {})),
-            "ceiling_interpretation": (
-                "llm_v01_zero_shot is the idealized-associate ceiling: capable human-style "
-                "intuition, no formulas. associate_floor is the realistic (flawed) associate "
-                "baseline. Top-1 accuracy measures agreement with the domain-expert labels in "
-                "data_labeler.py, NOT real-world optimality."
-            ),
-            "data_leakage_note": (
-                "synthetic_logs examples (20/50) are drawn from the training partition "
-                "(pre-2025-05-01). v2.2 top-1 on this subset is not a clean holdout result; "
-                "prefer canonical_holdout_reference.v2_2_ml_top1_pct for v2.2 evaluation."
+            "source_distribution": meta.get("sources", {}),
+            "tag_distribution": meta.get("csv_tag_distribution", {}),
+            "jtbd_metrics": (
+                "cook_now_accuracy: did model pick the right first item? "
+                "cook_now_set_recall: fraction of urgent items in top-k. "
+                "must_precede_violations: safety constraint violations (goal=0). "
+                "refusal_accuracy: OOS/adversarial correctness. "
+                "kendall_tau: full-order quality (secondary)."
             ),
             "canonical_holdout_reference": _load_holdout_ref(),
         },

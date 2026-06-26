@@ -149,10 +149,8 @@ def load_model():
 
 
 def load_labeled_data():
-    """Load labeled training scenarios. Returns empty list if file is missing."""
+    """Load labeled training scenarios."""
     data_path = os.path.join(PROJECT_ROOT, "data", "labeled_training_set.json")
-    if not os.path.exists(data_path):
-        return []
     with open(data_path) as f:
         return json.load(f)
 

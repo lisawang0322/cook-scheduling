@@ -4,3 +4,9 @@ __pycache__/
 *.pyo
 .venv/
 *.DS_Store
+
+# Large local data files (regenerate from notebooks; do not commit)
+data/cook_logs.json
+data/pos_sales.json
+data/write_off_logs.json
+data/labeled_training_set.json

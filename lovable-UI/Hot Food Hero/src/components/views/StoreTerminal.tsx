@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,6 @@ import {
   ChevronRight,
   PartyPopper,
   Sparkles,
-  X,
 } from "lucide-react";
 import { useScenario } from "@/lib/scenario-context";
 import { addMinutes, addHours, type CookItem, type Scenario } from "@/lib/hot-food";
@@ -36,18 +35,13 @@ export function StoreTerminal() {
 
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
-  const [skipped, setSkipped] = useState<Record<string, boolean>>({});
 
   // Reset quantities + jump to standby when scenario changes
   useEffect(() => {
     const q: Record<string, number> = {};
-    scenario.items.forEach((i) => {
-      const batches = Math.ceil(i.recommended / i.lcu);
-      q[i.id] = batches * i.lcu;
-    });
+    scenario.items.forEach((i) => (q[i.id] = i.recommended));
     setQuantities(q);
     setConfirmed({});
-    setSkipped({});
     setStep(1);
   }, [scenario]);
 
@@ -84,49 +78,29 @@ export function StoreTerminal() {
     });
   };
 
-  const advanceOrFinish = (
-    nextConfirmed: Record<string, boolean>,
-    nextSkipped: Record<string, boolean>
-  ) => {
-    const allDone = scenario.items.every((i) => nextConfirmed[i.id] || nextSkipped[i.id]);
-    if (allDone) setTimeout(() => setStep(4), 300);
-  };
-
   const confirmItem = async (item: CookItem) => {
-    const nextConfirmed = { ...confirmed, [item.id]: true };
-    setConfirmed(nextConfirmed);
-    logAction({
-      data: {
-        ts: new Date().toISOString(),
-        event: "confirm_cook",
-        scenario: scenario.id,
-        store: scenario.storeId,
-        item: item.id,
-        recommended_qty: item.recommended,
-        confirmed_qty: quantities[item.id],
-        delta: quantities[item.id] - item.recommended,
-        lcu: item.lcu,
-      },
-    }).catch((err) => console.error("[HotFoodAssistant] log-action failed", err));
-    advanceOrFinish(nextConfirmed, skipped);
+    setConfirmed((prev) => ({ ...prev, [item.id]: true }));
+    const record = {
+      ts: new Date().toISOString(),
+      scenario: scenario.id,
+      store: scenario.storeId,
+      item: item.id,
+      recommended_qty: item.recommended,
+      confirmed_qty: quantities[item.id],
+      delta: quantities[item.id] - item.recommended,
+      lcu: item.lcu,
+    };
+    logAction({ data: record }).catch((err) =>
+      console.error("[HotFoodAssistant] log-action failed", err)
+    );
   };
 
-  const skipItem = (item: CookItem) => {
-    const nextSkipped = { ...skipped, [item.id]: true };
-    setSkipped(nextSkipped);
-    logAction({
-      data: {
-        ts: new Date().toISOString(),
-        event: "skip",
-        scenario: scenario.id,
-        store: scenario.storeId,
-        item: item.id,
-        recommended_qty: item.recommended,
-      },
-    }).catch((err) => console.error("[HotFoodAssistant] log-action failed", err));
-    advanceOrFinish(confirmed, nextSkipped);
-  };
+  const allConfirmed = useMemo(
+    () => scenario.items.length > 0 && scenario.items.every((i) => confirmed[i.id]),
+    [confirmed, scenario]
+  );
 
+  const startCook = () => setStep(4);
   const nextBatch = () => setStep(1);
 
   return (
@@ -156,10 +130,11 @@ export function StoreTerminal() {
           scenario={scenario}
           quantities={quantities}
           confirmed={confirmed}
-          skipped={skipped}
           adjustQty={adjustQty}
           confirmItem={confirmItem}
-          skipItem={skipItem}
+          allConfirmed={allConfirmed}
+          onStart={startCook}
+          onBack={() => setStep(2)}
         />
       )}
       {step === 4 && <Success onNext={nextBatch} />}
@@ -283,14 +258,10 @@ function CookList({
                     <h3 className="font-bold text-lg leading-tight">{item.name}</h3>
                   </div>
                   <div className="mt-2 text-xl font-semibold">
-                    {item.lcu > 1
-                      ? `Cook ${Math.ceil(item.recommended / item.lcu)} batches \u00d7 ${item.lcu}`
-                      : `Cook ${item.recommended} units`}
-                    {item.lcu > 1 && (
-                      <span className="ml-1 text-sm font-normal text-muted-foreground">
-                        ({Math.ceil(item.recommended / item.lcu) * item.lcu} units total)
-                      </span>
-                    )}
+                    Cook {item.recommended} units
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">
+                      ({Math.max(1, Math.round(item.recommended / item.lcu))} {item.lcu > 1 ? `batches of ${item.lcu}` : "tray"})
+                    </span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                     <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {item.cookTimeMin} min</span>
@@ -343,116 +314,70 @@ function ConfirmAmounts({
   scenario,
   quantities,
   confirmed,
-  skipped,
   adjustQty,
   confirmItem,
-  skipItem,
+  allConfirmed,
+  onStart,
 }: {
   scenario: Scenario;
   quantities: Record<string, number>;
   confirmed: Record<string, boolean>;
-  skipped: Record<string, boolean>;
   adjustQty: (item: CookItem, delta: number) => void;
   confirmItem: (item: CookItem) => void;
-  skipItem: (item: CookItem) => void;
+  allConfirmed: boolean;
+  onStart: () => void;
+  onBack: () => void;
 }) {
-  const activeId = scenario.items.find((i) => !confirmed[i.id] && !skipped[i.id])?.id ?? null;
-
   return (
     <div className="flex flex-col h-[720px]">
       <div className="px-5 pt-5 pb-3">
         <h1 className="text-2xl font-bold">Confirm how much you're cooking</h1>
         <div className="text-xs text-muted-foreground mt-1">
-          Adjust quantity then confirm, or skip an item.
+          Tap − / + to adjust. Quantities snap to batch size.
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
-        {scenario.items.map((item) => {
+        {scenario.items.map((item, idx) => {
           const qty = quantities[item.id] ?? item.recommended;
-          const isCooking = !!confirmed[item.id];
-          const isSkipped = !!skipped[item.id];
-          const isActive = item.id === activeId;
+          const isConfirmed = !!confirmed[item.id];
           const delta = qty - item.recommended;
-
-          if (isCooking) {
-            return (
-              <Card key={item.id} className="p-4 bg-emerald-50 border-emerald-300 transition">
-                <div className="flex items-center gap-3">
-                  <div className="text-3xl">{item.emoji}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold leading-tight">{item.name}</div>
-                    <div className="text-[11px] text-emerald-700 font-medium">
-                      {item.lcu > 1
-                        ? `Cooking ${qty / item.lcu} batches × ${item.lcu} = ${qty} units`
-                        : `Cooking ${qty} units`}
-                      {delta !== 0 && (
-                        <span className="ml-1 text-muted-foreground font-normal">
-                          ({delta > 0 ? `+${delta}` : delta} vs rec)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="h-9 w-9 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow shrink-0">
-                    <Flame className="h-5 w-5" />
-                  </div>
-                </div>
-              </Card>
-            );
-          }
-
-          if (isSkipped) {
-            return (
-              <Card key={item.id} className="p-4 bg-muted/40 border-muted transition opacity-60">
-                <div className="flex items-center gap-3">
-                  <div className="text-3xl grayscale">{item.emoji}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold leading-tight text-muted-foreground">{item.name}</div>
-                    <div className="text-[11px] text-muted-foreground">Skipped</div>
-                  </div>
-                  <div className="h-9 w-9 rounded-full bg-muted border flex items-center justify-center shrink-0">
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </Card>
-            );
-          }
-
           return (
             <Card
               key={item.id}
-              className={`p-4 transition ${isActive ? "" : "opacity-40 pointer-events-none"}`}
+              className={`p-4 transition ${isConfirmed ? "bg-emerald-50 border-emerald-300" : ""}`}
             >
               <div className="flex items-center gap-3">
                 <div className="text-3xl">{item.emoji}</div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold leading-tight">{item.name}</div>
                   <div className="text-[11px] text-muted-foreground">
-                    {item.lcu > 1
-                      ? `Rec. ${Math.ceil(item.recommended / item.lcu)} batches × ${item.lcu} units`
-                      : `Recommended ${item.recommended} units`}
+                    Recommended {item.recommended} · batch of {item.lcu}
                   </div>
                 </div>
+                {isConfirmed && (
+                  <div className="h-9 w-9 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow">
+                    <Check className="h-5 w-5" />
+                  </div>
+                )}
               </div>
 
-              <div className="mt-4 flex justify-center">
+              <div className="mt-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 bg-muted rounded-2xl p-1">
                   <Button
                     size="icon"
                     variant="ghost"
                     className="h-12 w-12 rounded-xl active:scale-90 transition"
                     onClick={() => adjustQty(item, -1)}
-                    disabled={qty <= 0}
+                    disabled={qty <= 0 || isConfirmed}
                     aria-label={`Decrease ${item.name}`}
                   >
                     <Minus className="h-5 w-5" />
                   </Button>
                   <div className="min-w-[64px] text-center">
-                    <div className="text-3xl font-bold tabular-nums leading-none">
-                      {item.lcu > 1 ? qty / item.lcu : qty}
-                    </div>
+                    <div className="text-3xl font-bold tabular-nums leading-none">{qty}</div>
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
-                      {item.lcu > 1 ? `batches × ${item.lcu}` : "units"}
+                      units
                     </div>
                   </div>
                   <Button
@@ -460,34 +385,50 @@ function ConfirmAmounts({
                     variant="ghost"
                     className="h-12 w-12 rounded-xl active:scale-90 transition"
                     onClick={() => adjustQty(item, 1)}
+                    disabled={isConfirmed}
                     aria-label={`Increase ${item.name}`}
                   >
                     <Plus className="h-5 w-5" />
                   </Button>
                 </div>
-              </div>
 
-              <div className="mt-3 flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => skipItem(item)}
-                  className="h-12 flex-1 text-muted-foreground border-muted-foreground/30 hover:bg-muted active:scale-[0.97] transition"
-                  aria-label={`Skip ${item.name}`}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Skip
-                </Button>
-                <Button
-                  onClick={() => confirmItem(item)}
-                  className="h-12 flex-1 bg-primary hover:bg-primary/90 active:scale-[0.97] transition font-semibold"
-                >
-                  <Check className="h-4 w-4 mr-1" />
-                  Confirm
-                </Button>
+                {!isConfirmed ? (
+                  <Button
+                    onClick={() => confirmItem(item)}
+                    className="h-12 px-5 bg-primary hover:bg-primary/90 active:scale-[0.97] transition font-semibold"
+                  >
+                    Confirm
+                  </Button>
+                ) : (
+                  <div className="text-xs text-emerald-700 font-medium text-right">
+                    Locked in
+                    {delta !== 0 && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {delta > 0 ? `+${delta}` : delta} vs rec
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+              {idx === 0 && !isConfirmed && (
+                <div className="mt-2 text-[10px] uppercase tracking-wider text-red-brand font-semibold">
+                  Cook now
+                </div>
+              )}
             </Card>
           );
         })}
+      </div>
+
+      <div className="p-4 border-t bg-white">
+        <Button
+          size="lg"
+          disabled={!allConfirmed}
+          onClick={onStart}
+          className="w-full h-14 text-base font-semibold bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground active:scale-[0.98] transition"
+        >
+          {allConfirmed ? "Start Cook" : `Confirm all ${scenario.items.length} items`}
+        </Button>
       </div>
     </div>
   );

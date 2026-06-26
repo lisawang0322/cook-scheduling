@@ -2,13 +2,16 @@
   "metadata": {
     "prompt_version": "v0.1",
     "llm_model": "skipped (ml-only re-run)",
-    "run_date": "2026-06-21T21:24:25"
+    "run_date": "2026-06-26T16:08:36"
   },
   "predictions": {
     "associate_floor": [
       {
         "eval_id": "log_001",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -20,6 +23,9 @@
       {
         "eval_id": "log_002",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -31,6 +37,9 @@
       {
         "eval_id": "log_003",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -41,6 +50,9 @@
       {
         "eval_id": "log_004",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -51,6 +63,9 @@
       {
         "eval_id": "log_005",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -61,6 +76,9 @@
       {
         "eval_id": "log_006",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_4h",
@@ -71,6 +89,9 @@
       {
         "eval_id": "log_007",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -80,6 +101,9 @@
       {
         "eval_id": "log_008",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -89,6 +113,9 @@
       {
         "eval_id": "log_009",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -99,6 +126,9 @@
       {
         "eval_id": "log_010",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -109,6 +139,9 @@
       {
         "eval_id": "log_011",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -119,6 +152,9 @@
       {
         "eval_id": "log_012",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -128,6 +164,9 @@
       {
         "eval_id": "log_013",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -137,6 +176,9 @@
       {
         "eval_id": "log_014",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -146,6 +188,9 @@
       {
         "eval_id": "log_015",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -157,6 +202,9 @@
       {
         "eval_id": "log_016",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -168,6 +216,9 @@
       {
         "eval_id": "log_017",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -177,6 +228,9 @@
       {
         "eval_id": "log_018",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -186,6 +240,9 @@
       {
         "eval_id": "log_019",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -196,6 +253,9 @@
       {
         "eval_id": "log_020",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -206,6 +266,9 @@
       {
         "eval_id": "log_021",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -216,6 +279,9 @@
       {
         "eval_id": "log_022",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -226,6 +292,9 @@
       {
         "eval_id": "log_023",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -236,6 +305,9 @@
       {
         "eval_id": "log_024",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -246,6 +318,9 @@
       {
         "eval_id": "con_001",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -257,6 +332,9 @@
       {
         "eval_id": "con_002",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -268,6 +346,9 @@
       {
         "eval_id": "con_003",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -279,6 +360,9 @@
       {
         "eval_id": "con_004",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -289,6 +373,9 @@
       {
         "eval_id": "con_005",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -299,6 +386,9 @@
       {
         "eval_id": "con_006",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -309,6 +399,9 @@
       {
         "eval_id": "con_007",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -319,6 +412,9 @@
       {
         "eval_id": "con_008",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -329,6 +425,9 @@
       {
         "eval_id": "int_V01",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -340,6 +439,9 @@
       {
         "eval_id": "int_V02",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -350,6 +452,9 @@
       {
         "eval_id": "int_V03",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -360,6 +465,9 @@
       {
         "eval_id": "int_V04",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -371,6 +479,9 @@
       {
         "eval_id": "int_V05",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -381,6 +492,9 @@
       {
         "eval_id": "int_V06",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -392,6 +506,9 @@
       {
         "eval_id": "int_V07",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -401,6 +518,9 @@
       {
         "eval_id": "int_V08",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -411,6 +531,9 @@
       {
         "eval_id": "int_V09",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -422,6 +545,9 @@
       {
         "eval_id": "int_V10",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -482,6 +608,9 @@
       {
         "eval_id": "log_001",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -493,6 +622,9 @@
       {
         "eval_id": "log_002",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -504,6 +636,9 @@
       {
         "eval_id": "log_003",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -514,6 +649,9 @@
       {
         "eval_id": "log_004",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -524,6 +662,9 @@
       {
         "eval_id": "log_005",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -534,6 +675,9 @@
       {
         "eval_id": "log_006",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -544,6 +688,9 @@
       {
         "eval_id": "log_007",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -553,6 +700,9 @@
       {
         "eval_id": "log_008",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -562,6 +712,9 @@
       {
         "eval_id": "log_009",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -572,6 +725,9 @@
       {
         "eval_id": "log_010",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -582,6 +738,9 @@
       {
         "eval_id": "log_011",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -592,6 +751,9 @@
       {
         "eval_id": "log_012",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -601,6 +763,9 @@
       {
         "eval_id": "log_013",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -610,6 +775,9 @@
       {
         "eval_id": "log_014",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -619,6 +787,9 @@
       {
         "eval_id": "log_015",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -630,6 +801,9 @@
       {
         "eval_id": "log_016",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -641,6 +815,9 @@
       {
         "eval_id": "log_017",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -650,6 +827,9 @@
       {
         "eval_id": "log_018",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -659,6 +839,9 @@
       {
         "eval_id": "log_019",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -669,6 +852,9 @@
       {
         "eval_id": "log_020",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -679,6 +865,9 @@
       {
         "eval_id": "log_021",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -689,6 +878,9 @@
       {
         "eval_id": "log_022",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -699,6 +891,9 @@
       {
         "eval_id": "log_023",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -709,6 +904,9 @@
       {
         "eval_id": "log_024",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -719,6 +917,9 @@
       {
         "eval_id": "con_001",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -730,6 +931,9 @@
       {
         "eval_id": "con_002",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -741,6 +945,9 @@
       {
         "eval_id": "con_003",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -752,6 +959,9 @@
       {
         "eval_id": "con_004",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -762,6 +972,9 @@
       {
         "eval_id": "con_005",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -772,6 +985,9 @@
       {
         "eval_id": "con_006",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -782,6 +998,9 @@
       {
         "eval_id": "con_007",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -792,6 +1011,9 @@
       {
         "eval_id": "con_008",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -802,6 +1024,9 @@
       {
         "eval_id": "int_V01",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -813,6 +1038,9 @@
       {
         "eval_id": "int_V02",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -823,6 +1051,9 @@
       {
         "eval_id": "int_V03",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -833,6 +1064,9 @@
       {
         "eval_id": "int_V04",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -844,6 +1078,9 @@
       {
         "eval_id": "int_V05",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -854,6 +1091,9 @@
       {
         "eval_id": "int_V06",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -865,6 +1105,9 @@
       {
         "eval_id": "int_V07",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -874,6 +1117,9 @@
       {
         "eval_id": "int_V08",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -884,6 +1130,9 @@
       {
         "eval_id": "int_V09",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -895,6 +1144,9 @@
       {
         "eval_id": "int_V10",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -955,6 +1207,9 @@
       {
         "eval_id": "log_001",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -966,6 +1221,9 @@
       {
         "eval_id": "log_002",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -977,6 +1235,9 @@
       {
         "eval_id": "log_003",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -987,6 +1248,9 @@
       {
         "eval_id": "log_004",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -997,6 +1261,9 @@
       {
         "eval_id": "log_005",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1007,6 +1274,9 @@
       {
         "eval_id": "log_006",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1017,6 +1287,9 @@
       {
         "eval_id": "log_007",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1026,6 +1299,9 @@
       {
         "eval_id": "log_008",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1035,6 +1311,9 @@
       {
         "eval_id": "log_009",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1045,6 +1324,9 @@
       {
         "eval_id": "log_010",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1055,6 +1337,9 @@
       {
         "eval_id": "log_011",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1065,6 +1350,9 @@
       {
         "eval_id": "log_012",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1074,6 +1362,9 @@
       {
         "eval_id": "log_013",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1083,6 +1374,9 @@
       {
         "eval_id": "log_014",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1092,6 +1386,9 @@
       {
         "eval_id": "log_015",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -1103,6 +1400,9 @@
       {
         "eval_id": "log_016",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -1114,6 +1414,9 @@
       {
         "eval_id": "log_017",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1123,6 +1426,9 @@
       {
         "eval_id": "log_018",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1132,6 +1438,9 @@
       {
         "eval_id": "log_019",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1142,6 +1451,9 @@
       {
         "eval_id": "log_020",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1152,6 +1464,9 @@
       {
         "eval_id": "log_021",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1162,6 +1477,9 @@
       {
         "eval_id": "log_022",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1172,6 +1490,9 @@
       {
         "eval_id": "log_023",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1182,6 +1503,9 @@
       {
         "eval_id": "log_024",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1192,6 +1516,9 @@
       {
         "eval_id": "con_001",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -1203,6 +1530,9 @@
       {
         "eval_id": "con_002",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -1214,6 +1544,9 @@
       {
         "eval_id": "con_003",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -1225,6 +1558,9 @@
       {
         "eval_id": "con_004",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1235,6 +1571,9 @@
       {
         "eval_id": "con_005",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1245,6 +1584,9 @@
       {
         "eval_id": "con_006",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1255,6 +1597,9 @@
       {
         "eval_id": "con_007",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1265,6 +1610,9 @@
       {
         "eval_id": "con_008",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1275,6 +1623,9 @@
       {
         "eval_id": "int_V01",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1286,6 +1637,9 @@
       {
         "eval_id": "int_V02",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1296,6 +1650,9 @@
       {
         "eval_id": "int_V03",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -1306,6 +1663,9 @@
       {
         "eval_id": "int_V04",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1317,6 +1677,9 @@
       {
         "eval_id": "int_V05",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "wings_2h",
@@ -1327,6 +1690,9 @@
       {
         "eval_id": "int_V06",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "baked_goods",
@@ -1338,6 +1704,9 @@
       {
         "eval_id": "int_V07",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1347,6 +1716,9 @@
       {
         "eval_id": "int_V08",
         "correct": false,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1357,6 +1729,9 @@
       {
         "eval_id": "int_V09",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",
@@ -1368,6 +1743,9 @@
       {
         "eval_id": "int_V10",
         "correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "outcome": "ranking",
         "pred": [
           "pizza",

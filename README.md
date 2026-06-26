@@ -2,7 +2,7 @@
 
 An AI system that helps store associates decide which hot food item to cook first during overlapping daypart windows. Built across Weeks 1–9 using a three-tier model stack (rule-based → ML → LLM benchmark) with a reproducible evaluation harness.
 
-> **Sprint 1 Status (Week 9):** All deliverables complete. Post-sprint 28-item expansion retrained Jun 2026: associate 8.9% • v1 58.6% • v2.2 68.9% (honest temporal test, 730 holdout scenarios) • +60pp over associate. LLM v0.2 64.0% (Sprint 1 5-item eval, unchanged). See `SPRINT1_SUMMARY.md` for Sprint 1 5-item baseline.
+> **Sprint 1 Status (Week 9) + Jun 2026 updates:** All deliverables complete. 28-item temporal holdout: v1 58.6% • v2.2 68.9%. **JTBD v0.3 plain-language eval (50 examples, ML baseline, Jun 2026):** v1 87.8% cook-now accuracy • 3 waste-safety violations • v2.2 80.5% • 6 violations • LLM pending. See `SPRINT1_SUMMARY.md` for full baseline and eval set history.
 
 ---
 
@@ -1058,27 +1058,55 @@ To stop:
 docker-compose down
 ```
 
-### Run the Eval Harness (dry run — no LLM)
+### Run the Eval Harness
 
 ```bash
-python notebooks/week9_llm_eval_runner.py --no-llm
+# v0.1/v0.2 sets — formula-label accuracy (legacy metric, backward-compat)
+python notebooks/week9_llm_eval_runner.py --no-llm                        # ML baselines, v0.1 set
+python notebooks/week9_llm_eval_runner.py --eval-set=v0.2 --no-llm        # ML baselines, v0.2 set
+
+# v0.3 JTBD plain-language set — cook-now accuracy + must_precede_violations
+python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --no-llm        # ML baselines only
 ```
 
-### Run the LLM Evaluation (requires Anthropic key)
+### Run the Full LLM Evaluation (requires Anthropic key)
 
 ```bash
 export ANTHROPIC_API_KEY=your_key
+
+# Prompt A/B on v0.1 legacy set
 python notebooks/week9_llm_eval_runner.py --prompt-version=v0.1
 python notebooks/week9_llm_eval_runner.py --prompt-version=v0.2
 python scripts/compare_llm_versions.py v0.1 v0.2
+
+# JTBD plain-language eval (v0.3 set + v0.3 prompt)
+python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3
 ```
 
-### Rebuild the Eval Set
+### Rebuild Eval Sets
 
 ```bash
-python scripts/build_eval_set_v0_1.py
-# Regenerates data/llm_eval_set_v0.1.json + .csv
+python scripts/build_eval_set_v0_1.py   # data/llm_eval_set_v0.1.json + .csv
+python scripts/build_eval_set_v0_3.py   # data/llm_eval_set_v0.3.json + .csv (plain-language)
 ```
+
+### JTBD Eval Metrics (v0.3 set)
+
+| Metric | What it measures | Goal |
+|---|---|---|
+| **cook_now_accuracy** | Correct first item (in urgent set) | Headline — maximize |
+| **cook_now_set_recall** | Fraction of urgent items in top-k | Maximize |
+| **must_precede_violations** | Near-expiry item ranked after a long-hold item | **0** (waste proxy) |
+| **refusal_accuracy** | OOS / adversarial correctly refused | Maximize |
+| **kendall_tau** | Full ordering quality (2–5 items, now meaningful) | Secondary |
+
+**v0.3 ML baseline (Jun 2026, 50 examples — LLM pending valid API key):**
+
+| Comparator | Cook-now% | Set Recall | MPV | Kendall τ |
+|---|---|---|---|---|
+| associate_floor | 68.3% | 0.646 | 14 | −0.081 |
+| v1_rules | **87.8%** | **0.866** | **3** | **0.874** |
+| v2_2_ml | 80.5% | 0.805 | 6 | 0.854 |
 
 ### Retrain v2.2 Model
 
@@ -1097,13 +1125,16 @@ python notebooks/week7_model_training.py
 │   ├── pos_sales.json                  # 766,229 sale records
 │   ├── write_off_logs.json             # 148,422 write-off entries
 │   ├── labeled_training_set.json       # 2,164 labeled decision-point scenarios
-│   ├── llm_eval_set_v0.1.json          # 50-example shared eval set
+│   ├── llm_eval_set_v0.1.json          # 50-example shared eval set (formula-label)
 │   ├── llm_eval_set_v0.1.csv           # Same, CSV format
+│   ├── llm_eval_set_v0.3.json          # 32-example JTBD plain-language eval (Jun 2026)
+│   ├── llm_eval_set_v0.3.csv           # Same, CSV format
 │   └── interview_notes.md              # 15 simulated associate vignettes
 │
 ├── prompts/
 │   ├── v0.1_system_prompt.md          # LLM prompt v0.1 (initial benchmark)
-│   └── v0.2_system_prompt.md          # LLM prompt v0.2 (associate-voice tightening)
+│   ├── v0.2_system_prompt.md          # LLM prompt v0.2 (associate-voice tightening)
+│   └── v0.3_system_prompt.md          # LLM prompt v0.3 (plain-language input)
 │
 ├── src/
 │   ├── cook_scheduler.py               # v1 rule-based ranker + AssociateBaseline
@@ -1123,6 +1154,7 @@ python notebooks/week7_model_training.py
 │
 ├── scripts/
 │   ├── build_eval_set_v0_1.py          # Builds llm_eval_set_v0.1.json/.csv
+│   ├── build_eval_set_v0_3.py          # Builds llm_eval_set_v0.3.json/.csv (JTBD plain-language)
 │   └── compare_llm_versions.py         # Diffs two llm_eval_vX.Y_report.json files
 │
 ├── models/

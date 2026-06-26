@@ -136,14 +136,67 @@ streamlit run app/app.py
 
 ---
 
-## 7. Sprint 2 Plan
+## 7. JTBD Plain-Language Eval v0.3 (Jun 2026)
+
+### What changed and why
+
+The v0.1/v0.2 eval sets tested "can the model reproduce a formula's full permutation over 19–28 items?" That diverges from the prototype's actual job: a new-hire associate has ~30 seconds to decide **which single item to cook first**, avoid waste (expiry), and give a defensible reason.
+
+The v0.3 eval resets around that job:
+- **32 hand-authored plain-language scenarios**, 2–5 items each (realistic decision scale)
+- **JTBD-aligned metrics** in place of full Kendall tau as the headline
+
+### JTBD Metrics
+
+| Metric | What it measures | Goal |
+|---|---|---|
+| **cook_now_accuracy** | Correct first item picked | Headline — maximize |
+| **cook_now_set_recall** | Fraction of all urgent items in top-k | Maximize |
+| **must_precede_violations (MPV)** | Near-expiry/short-hold item ranked *after* a long-hold item | **0** — each is a waste risk |
+| **refusal_accuracy** | OOS / adversarial correctly refused | Maximize (trust dimension) |
+| **kendall_tau** | Full ordering quality (now meaningful at 2–5 items) | Secondary |
+
+### Scenario categories
+
+| Category | N | What it tests |
+|---|---|---|
+| modal | 15 | Everyday correct decisions under normal conditions |
+| edge | 13 | Waste-avoidance, hold-time tiebreak, demand-vs-perishability divergence |
+| stockout | 5 | Demand wins when windows tied |
+| no_demand | 3 | Zero-forecast item goes last |
+| triage | 5 | Behind-schedule pressure; which item can slip |
+| OOS | 5 | Out-of-scope refusal (WiFi, reporting, empty board, unrecognized item) |
+| adversarial | 4 | Authority override, prompt injection, contradictory hold-time claim, pre-fill injection |
+
+**Total: 50 examples.** 7 intentional divergence examples where the formula gives a different answer than JTBD-correct reasoning (these are signal: high demand or demand density can be a distractor when hold times or urgency differ).
+
+### v0.3 ML baseline (Jun 2026, LLM pending valid API key)
+
+| Comparator | Cook-now% | Set Recall | MPV | Kendall τ |
+|---|---|---|---|---|
+| associate_floor | 68.3% | 0.646 | 14 | −0.081 |
+| v1_rules | **87.8%** | **0.866** | **3** | **0.874** |
+| v2_2_ml | 80.5% | 0.805 | 6 | 0.854 |
+
+**v1 outperforms v2.2 on this set** — 2–5 item decisions are exactly the regime where the rule-based formula is strongest. v2.2's pairwise GBM benefits from larger item sets where pair interactions matter.
+
+**Notable MPV insight:** v1 has 3 must_precede violations (waste-safety failures) vs v2.2's 6. These are cases where a near-expiry item is ranked behind a long-hold item — the most operationally costly error type.
+
+Files: `data/llm_eval_set_v0.3.json`, `data/llm_eval_set_v0.3.csv`, `scripts/build_eval_set_v0_3.py`, `prompts/v0.3_system_prompt.md`, `output/llm_eval_v0.3_v0_3_report.json`.
+
+---
+
+## 8. Sprint 2 Plan
 
 | Priority | Task | Status | Rationale |
 |---|---|---|---|
 | P1 | **Streamlit + React UI connected to v2.2** | ✅ Done | Was code-only; now live via Streamlit pages + FastAPI + Hot Food Hero |
 | P1 | **Docker deployment packaging** | ✅ Done | Single-command demo for stakeholders |
 | P1 | **Auto ML in Scenario Simulator** | ✅ Done | Preview and tablet flow use v2.2 by default |
-| P1 | **Divergence label validation** — interview 3 experienced associates on baked_goods spike scenarios | 🔲 Open | 0% on divergence is a signal to investigate the label, not (only) the prompt |
-| P2 | **Wire remaining React nav views** — enable Impact Dashboard in sidebar | 🔲 Open | Components exist; need nav routing + polish |
-| P2 | **Adversarial hardening** — expand to 6 adversarial examples; test stronger constraint framing | 🔲 Open | 33.3% adversarial; ADV_03 is the specific failure case |
+| P1 | **JTBD plain-language eval v0.3** | ✅ Done | 32 scenarios, JTBD metrics, updated runner and prompt v0.3 |
+| P2 | **Run LLM on v0.3 set** — needs valid `ANTHROPIC_API_KEY` | 🔲 Open | Run: `python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3` |
+| P2 | **Divergence label validation** — interview associates on high-demand vs expiry cases | 🔲 Open | 4 divergence examples in v0.3 where JTBD answer disagrees with formula |
+| P2 | **Wire remaining React nav views** — enable Scenario Comparison, Impact Dashboard, What-If in sidebar | 🔲 Open | Components exist; need nav routing + polish |
+| P2 | **Real-world validation** — compare recommendations vs actual write-off outcomes on live POS data | 🔲 Open | Formula-derived labels may not reflect true waste reduction |
 | P2 | **Model-faithful explanations (SHAP)** — replace template strings with GBM feature attributions | 🔲 Open | See `ARCHITECTURE_DECISIONS.md` Option A |
+| P3 | **Chain-of-thought prompt** — scratchpad before final ranked_queue | 🔲 Open | v0.3 plain-language format is the right foundation for CoT |
