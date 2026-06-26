@@ -2,7 +2,7 @@
 
 An AI system that helps store associates decide which hot food item to cook first during overlapping daypart windows. Built across Weeks 1–9 using a three-tier model stack (rule-based → ML → LLM benchmark) with a reproducible evaluation harness.
 
-> **Sprint 1 Status (Week 9) + Jun 2026 updates:** All deliverables complete. 28-item temporal holdout: v1 58.6% • v2.2 68.9%. **JTBD v0.3 plain-language eval (50 examples, 45 ranking + 5 refusal-only OOS, Jun 2026):** v1 **88.9%** cook-now accuracy • **5** waste-safety violations • associate 68.9% • v2.2 80.5% (prior run — re-run harness to refresh on fixed routing) • LLM pending. See `SPRINT1_SUMMARY.md` for full baseline and eval set history.
+> **Sprint 1 Status (Week 9) + Jun 2026 updates:** All deliverables complete. **Selection metric (Tier 1 holdout):** v1 58.6% • v2.2 **68.9%** (730-scenario temporal holdout — authoritative). **JTBD v0.3 DIAGNOSTIC eval** (110 examples, 95 ranking + 15 refusal, Jun 26 2026): LLM **95.8%** JTBD / **78.9%** formula (native) → **90.4%** formula (fair `--input-mode=features`) ≈ v1 **92.6%** • v2.2 **91.6%** (v1≈v2.2 n.s., p=1.0). *v0.3 is diagnostic only; see [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md).* Fair-and-Robust eval harness: bootstrap CIs, McNemar significance, multi-seed floor, `--input-mode`, scale stratification, selection scorecard.
 
 ---
 
@@ -694,12 +694,17 @@ python scripts/compare_llm_versions.py v0.1 v0.2
 
 **Open question — divergence cases:** The LLM consistently ranks high-demand baked_goods above pizza/wings even when baked_goods has a 23hr window. This may reflect genuine associate intuition that diverges from the formula. Requires field validation before treating as a prompt failure.
 
-**Eval harness features:**
+**Eval harness features (Fair-and-Robust update Jun 2026):**
 - `--eval-set=v0.1|v0.2|v0.3` selects eval set; `--prompt-version=vX.Y` selects prompt
-- Output files encode both versions: `llm_eval_{prompt}_{eval}_report.json` (avoids collisions)
-- **v0.3 routing:** refusal vs ranking determined by rankability (presence of item features), not tag alone — OOS examples are refusal-only; adversarial examples with cook labels are ranked
-- JTBD metrics for v0.3: `cook_now_accuracy`, `cook_now_set_recall`, `must_precede_violations`, `refusal_accuracy`, `kendall_tau`
-- Category breakdowns use `cook_now_correct` for v0.3 (formula top-1 for v0.1/v0.2)
+- `--assoc-seeds=N` (default 20): multi-seed associate floor → reports mean ± std (not single draw)
+- `--llm-samples=k` (default 1): repeated LLM runs → mean ± std, parse-failure rate (cost-gated)
+- `--input-mode=native|features|prose`: controls LLM input fairness; `features` mode feeds numeric table (removes prose advantage)
+- **Bootstrap 95% CIs** (`bootstrap_ci`, n=2,000, seed=42) on cook-now, formula top-1, set-recall, MPV-rate
+- **McNemar paired significance matrix** between all comparators (same examples → paired test appropriate)
+- **Scale stratification** (`item_count_band`: small 2-5 / medium 6-12 / large 13-28) — compare within band
+- **Holdout-clean slice** (`holdout_clean` flag, cutoff 2025-05-01) — v2.2 selection metrics only on clean examples
+- **Selection scorecard** (`selection_scorecard` block): primary metric + CI, guardrail pass/fail, recommendation
+- v0.3 routing, JTBD metrics, dual-label breakdown: unchanged
 - `--no-llm` flag for dry-run against ML baselines only
 
 **Deliverables:**
@@ -830,10 +835,10 @@ python scripts/compare_llm_versions.py v0.1 v0.2
    └─────────────────────────┘     └─────────────────┘
 ```
 
-**Three-tier evaluation:**
-- **ML holdout (730 scenarios, temporal split ≥ 2025-05-01):** Authoritative accuracy on retrained 28-item set. v1 58.6%, v2.2 68.9%.
-- **50-example shared eval v0.1/v0.2 (Sprint 1):** Formula-label top-1 on 5-item / 28-item inputs (re-run Jun 2026). v1 78.6%, v2.2 **81.0%**, LLM v0.2 64.0%.
-- **JTBD v0.3 plain-language eval (Jun 2026):** 50 hand-authored scenarios (2–5 items). Headline metric is **cook_now_accuracy** — did the model pick the right first item? 45 ranking examples + 5 refusal-only OOS; 4 adversarial examples test ranking under override/injection (not refusal).
+**Three-tier evaluation** (see [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md) for full protocol):
+- **Tier 1 — Selection (authoritative):** ML holdout (730 scenarios, temporal split ≥ 2025-05-01). v1 58.6%, v2.2 **68.9%** — current selection winner (+10.3pp, pending bootstrap CI certification).
+- **Tier 2 — Guardrails:** `must_precede_violation_rate` < 5%, refusal accuracy ≥ 90% (on ≥ 20 examples), latency budget, parse failure = 0%.
+- **Tier 3 — Diagnostic only (never decisive):** v0.1/v0.2 formula-label evals + **JTBD v0.3** (110 examples, 95 ranking + 15 refusal, 2–5 items, plain-language). v0.3 headline (Jun 26 2026): LLM **95.8%** JTBD but only **78.9%** formula (native/prose); **90.4%** formula with fair `--input-mode=features` ≈ v1 **92.6%** / v2.2 **91.6%** (McNemar p=1.0). Prose+JTBD-label confound quantified — fair comparison shows no LLM edge on formula. Use for understanding model behaviour, not selection.
 
 ### Data Flow
 
@@ -1066,25 +1071,36 @@ docker-compose down
 
 ```bash
 # v0.1/v0.2 sets — formula-label accuracy (legacy metric, backward-compat)
-python notebooks/week9_llm_eval_runner.py --no-llm                        # ML baselines, v0.1 set
-python notebooks/week9_llm_eval_runner.py --eval-set=v0.2 --no-llm        # ML baselines, v0.2 set
+python3.11 notebooks/week9_llm_eval_runner.py --no-llm                        # ML baselines, v0.1 set
+python3.11 notebooks/week9_llm_eval_runner.py --eval-set=v0.2 --no-llm        # ML baselines, v0.2 set
 
-# v0.3 JTBD plain-language set — cook-now accuracy + must_precede_violations
-python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3 --no-llm
+# v0.3 JTBD plain-language set (DIAGNOSTIC — 95 ranking + 15 refusal after expansion)
+python3.11 notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3 --no-llm
+
+# Multi-seed associate floor (default: 20 seeds)
+python3.11 notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --no-llm --assoc-seeds=20
 ```
 
 ### Run the Full LLM Evaluation (requires Anthropic key)
 
 ```bash
-export ANTHROPIC_API_KEY=your_key
+cp .env.example .env   # add ANTHROPIC_API_KEY to .env (gitignored)
+export ANTHROPIC_API_KEY=your_key   # or rely on .env via python-dotenv
 
-# Prompt A/B on v0.1 legacy set
-python notebooks/week9_llm_eval_runner.py --prompt-version=v0.1
-python notebooks/week9_llm_eval_runner.py --prompt-version=v0.2
-python scripts/compare_llm_versions.py v0.1 v0.2
+# Native mode (prose for LLM; baseline comparison)
+python3.11 notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3
 
-# JTBD plain-language eval (v0.3 set + v0.3 prompt)
-python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3
+# Features-controlled mode (LLM gets numeric table — removes prose advantage)
+python3.11 notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3 \
+    --input-mode=features
+
+# Multi-sample LLM variance (3 runs, cost-gated)
+python3.11 notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3 \
+    --llm-samples=3
+
+# Compare native vs features-mode to quantify prose advantage
+python3.11 scripts/compare_reports.py output/llm_eval_v0.3_v0_3_report.json \
+                                       output/llm_eval_v0.3_v0_3_features_report.json
 ```
 
 ### Rebuild Eval Sets
@@ -1102,20 +1118,40 @@ python scripts/build_eval_set_v0_3.py   # data/llm_eval_set_v0.3.json + .csv (pl
 | **cook_now_accuracy** | Correct first item (in urgent set) | Headline — maximize |
 | **cook_now_set_recall** | Fraction of urgent items in top-k | Maximize |
 | **must_precede_violations** | Near-expiry item ranked after a long-hold item | **0** (waste proxy) |
-| **refusal_accuracy** | Refusal-only examples (5 OOS) correctly refused | Maximize |
+| **refusal_accuracy** | Refusal-only examples (15 OOS) correctly refused | Maximize (≥ 90% on ≥ 20 ex) |
 | **kendall_tau** | Full ordering quality (2–5 items, now meaningful) | Secondary |
 
-**v0.3 scenario mix (50 total):** modal 15 • edge 13 • stockout 5 • no_demand 3 • triage 5 • OOS 5 (refusal-only) • adversarial 4 (ranking under override/injection). 7 divergence examples where JTBD answer differs from formula.
+**v0.3 scenario mix (110 total, expanded Jun 2026):** modal 40 • edge 23 • stockout 10 • no_demand 3 • triage 10 • OOS 15 (refusal-only) • adversarial 9 (ranking under override/injection). 16 divergence examples where JTBD answer differs from formula.
 
-**v0.3 ML baseline (Jun 26 2026, fixed harness — 45 ranking examples scored, LLM pending):**
+> ⚠️ **v0.3 is DIAGNOSTIC ONLY.** Confounds: LLM gets prose, ML gets numeric features; N=95 ranking gives ~±7pp CI; JTBD labels are unvalidated hypotheses on divergence cases. Do not use v0.3 results for model selection. See [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md).
 
-| Comparator | Cook-now% | Set Recall | MPV | Kendall τ |
-|---|---|---|---|---|
-| associate_floor | 68.9% | 0.681 | 17 | 0.126 |
-| v1_rules | **88.9%** | **0.889** | **5** | **0.807** |
-| v2_2_ml | 80.5%† | 0.805† | 6† | 0.854† |
+**v0.3 results (Jun 26 2026, expanded 110-ex set, 95 ranking + 15 refusal, `--assoc-seeds=20`):**
 
-†v2.2 from prior run before harness routing fix; re-run `--eval-set=v0.3 --no-llm` to refresh on 45 ranking examples.
+| Comparator | JTBD% | Formula% | Formula CI 95% | Set Recall | MPV | Refusal | Kendall τ |
+|---|---|---|---|---|---|---|---|
+| associate_floor | 66.3% ±4.4 | 50.5% | [41.0–60.0%] | 0.668 | 41 | — | 0.246 |
+| **v1_rules** | 89.5% | **92.6%** | [87.4–97.9%] | 0.900 | 8 | — | 0.851 |
+| v2_2_ml | 83.2% | 91.6% | [85.3–96.8%] | 0.837 | 16 | — | 0.835 |
+| llm (native/prose) | **95.8%** | 78.9% | [70.5–87.4%] | 0.953 | **2** | **93.3%** | 0.675 |
+| llm (`--input-mode=features`) | 93.6% | **90.4%** | [84.0–95.7%] | — | 1 | 93.3% | — |
+
+**Dual-label breakdown (79 agrees / 16 divergence):**
+
+| Slice | LLM JTBD (native) | LLM Formula (native) | LLM Formula (features) | v1 Formula | v2.2 Formula |
+|---|---|---|---|---|---|
+| Overall | 95.8% | 78.9% | **90.4%** | 92.6% | 91.6% |
+| Labels agree | 96.2% | 93.7% | 98.7% | 94.9% | 91.1% |
+| Labels diverge | 93.8% | 6.2% | 50.0% | 81.2% | 93.8% |
+
+**Interpretation:** LLM wins JTBD (prose input + JTBD labels) but loses formula top-1 in native mode (p=0.009 vs v1, p=0.031 vs v2.2). With fair input (`--input-mode=features`), LLM formula **90.4%** ≈ v1/v2.2 (p=1.0) — the "LLM > ML" story was input+label confound. v1 vs v2.2 still not significant (p=1.0). LLM passes guardrails (2 MPV, 93% refusal on 15 ex); ML models fail MPV threshold on this set.
+
+Reports: `output/llm_eval_v0.3_v0_3_report.json` (native), `output/llm_eval_v0.3_v0_3_features_report.json` (fair).
+
+**Compare two reports with CIs and significance:**
+```bash
+python scripts/compare_reports.py output/llm_eval_v0.3_v0_3_report.json \
+                                   output/llm_eval_v0.3_v0_3_features_report.json
+```
 
 ### Retrain v2.2 Model
 
@@ -1138,7 +1174,7 @@ python notebooks/week7_model_training.py
 │   ├── llm_eval_set_v0.1.csv           # Same, CSV format
 │   ├── llm_eval_set_v0.2.json          # 53-example 28-item eval set (formula-label)
 │   ├── llm_eval_set_v0.2.csv           # Same, CSV format
-│   ├── llm_eval_set_v0.3.json          # 50-example JTBD plain-language eval (Jun 2026)
+│   ├── llm_eval_set_v0.3.json          # 110-example JTBD plain-language eval (Jun 2026)
 │   ├── llm_eval_set_v0.3.csv           # Same, CSV format
 │   └── interview_notes.md              # 15 simulated associate vignettes
 │
@@ -1165,8 +1201,9 @@ python notebooks/week7_model_training.py
 │
 ├── scripts/
 │   ├── build_eval_set_v0_1.py          # Builds llm_eval_set_v0.1.json/.csv
-│   ├── build_eval_set_v0_3.py          # Builds llm_eval_set_v0.3.json/.csv (JTBD plain-language)
-│   └── compare_llm_versions.py         # Diffs two llm_eval_vX.Y_report.json files
+│   ├── build_eval_set_v0_3.py          # Builds llm_eval_set_v0.3.json/.csv (JTBD, 110 examples)
+│   ├── compare_llm_versions.py         # LLM prompt A/B diff (legacy)
+│   └── compare_reports.py              # ⭐ General report diff with CIs + significance
 │
 ├── models/
 │   ├── v2_ranking_model.pkl            # v2 multiclass baseline
@@ -1178,7 +1215,8 @@ python notebooks/week7_model_training.py
 │   ├── v2_2_temporal_report.json       # v2.2: 68.9% honest test (28-item set)
 │   ├── llm_eval_v0.1_report.json       # LLM v0.1: 50.0% top-1
 │   ├── llm_eval_v0.2_report.json       # LLM v0.2: 64.0% top-1
-│   ├── llm_eval_v0.3_v0_3_report.json  # JTBD v0.3 ML baseline (cook-now metrics)
+│   ├── llm_eval_v0.3_v0_3_report.json          # JTBD v0.3 native (prose) — Jun 26 2026
+│   ├── llm_eval_v0.3_v0_3_features_report.json  # JTBD v0.3 fair input (--input-mode=features)
 │   ├── llm_eval_v0.1_predictions.json  # Per-example predictions
 │   ├── llm_eval_v0.2_predictions.json
 │   ├── llm_eval_v0.3_v0_3_predictions.json
@@ -1192,7 +1230,8 @@ python notebooks/week7_model_training.py
 │       ├── 2_Impact_Dashboard.py
 │       └── 3_What_If_Simulator.py
 │
-├── SPRINT1_SUMMARY.md                  # 1-page Sprint 1 results summary
+├── EVAL_METHODOLOGY.md                 # ⭐ Authoritative eval protocol (selection vs diagnostic)
+├── SPRINT1_SUMMARY.md                  # Sprint 1 results summary with caveats
 ├── ARCHITECTURE_DECISIONS.md           # Design decisions + two-tier eval strategy
 └── requirements.txt
 ```
@@ -1235,4 +1274,10 @@ python notebooks/week7_model_training.py
 ---
 
 **Last Updated:** June 26, 2026  
-**Project Status:** Sprint 1 complete (Weeks 1–9) + 28-item expansion + JTBD v0.3 eval (Jun 2026). 28-item holdout: v1 58.6% • v2.2 68.9%. Sprint 1 shared eval: v1 78.6% • v2.2 81.0% • LLM v0.2 64.0%. **JTBD v0.3 (45 ranking ex):** v1 **88.9%** cook-now • 5 MPV • associate 68.9%. LLM on v0.3 pending. See [`SPRINT1_SUMMARY.md`](SPRINT1_SUMMARY.md) for full history.
+**Project Status:** Sprint 1 complete (Weeks 1–9) + 28-item expansion + JTBD v0.3 eval + Fair-and-Robust eval harness (Jun 2026).
+
+**Selection decision (Tier 1 holdout, authoritative):** `v2_2_ml` 68.9% vs v1 58.6% (+10.3pp, 730-scenario temporal holdout). Bootstrap CI not yet run on holdout — see [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md) §9 (P1 backlog).
+
+**JTBD v0.3 diagnostic eval (110 examples, Jun 26 2026):** LLM **95.8%** JTBD / **78.9%** formula (native) → **90.4%** formula (fair input) ≈ v1 **92.6%** • v2.2 **91.6%**. LLM wins guardrails (2 MPV, 93% refusal); selection stays **v2.2 68.9%** holdout. See [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md).
+
+See [`SPRINT1_SUMMARY.md`](SPRINT1_SUMMARY.md) for full results history. See [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md) for decision framework, guardrails, and statistical protocol.

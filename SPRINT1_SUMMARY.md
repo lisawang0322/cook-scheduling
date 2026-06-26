@@ -1,6 +1,8 @@
 # Sprint 1 Summary — 7-Eleven Cook Order AI
 
-**Date:** 2026-06-22 | **Author:** Lisa Wang | **Model:** claude-sonnet-4-6
+**Date:** 2026-06-22 (Sprint 1) · updated 2026-06-26 (v0.3 full LLM eval + fair input comparison) | **Author:** Lisa Wang | **Model:** claude-sonnet-4-6
+
+> **Eval Framework:** See [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md) for the authoritative selection protocol. **Selection:** `v2_2_ml` 68.9% on 730-scenario holdout. **v0.3 is DIAGNOSTIC only** — LLM 95.8% JTBD / 90.4% formula (fair input) ≈ v1 92.6% / v2.2 91.6%; no LLM edge on formula when input is controlled.
 
 ---
 
@@ -14,7 +16,7 @@ Built an end-to-end AI cook-scheduling system covering all five layers:
 | ML (v1) | Rule-based ranker: urgency × demand_density × waste_penalty | ✅ |
 | ML (v2.2) | Pairwise ranking model; temporal cross-validation | ✅ |
 | LLM | Zero-shot associate framing via Claude; refusal scoring | ✅ |
-| Eval harness | Unified runner: floor → ML → LLM ceiling on same 50 examples | ✅ |
+| Eval harness | Unified runner: floor → ML → LLM ceiling; v0.1/v0.2 formula-label + v0.3 JTBD metrics | ✅ |
 
 **Workflow:** decision scenario → feature extraction → associate-legible prompt → Claude ranks items → top-1/Kendall τ scored against domain-expert labels (`src/data_labeler.py`).
 
@@ -40,6 +42,8 @@ Built an end-to-end AI cook-scheduling system covering all five layers:
 | **llm_v0.2_zero_shot** | **64.0%** | **61.9%** | **75.0%** | **0.476** |
 
 **Note:** non-LLM comparators skip 8 OOS/adversarial examples (n=42); LLM scores on all 50.
+
+*Post-Sprint 1: see [§7 JTBD v0.3 eval](#7-jtbd-plain-language-eval-v03-jun-2026) for the plain-language eval set aligned to the associate's actual decision job.*
 
 ### LLM by Category (v0.2)
 | Category | v0.1 | v0.2 | Δ |
@@ -138,51 +142,83 @@ streamlit run app/app.py
 
 ## 7. JTBD Plain-Language Eval v0.3 (Jun 2026)
 
+> ⚠️ **v0.3 is DIAGNOSTIC ONLY — do not use for selection.** Confounds: LLM gets prose, ML gets numeric features; n=95 ranking gives ~±7pp CI; JTBD labels are unvalidated on 16 divergence cases. See [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md) §8 for full confound list.
+
 ### What changed and why
 
 The v0.1/v0.2 eval sets tested "can the model reproduce a formula's full permutation over 19–28 items?" That diverges from the prototype's actual job: a new-hire associate has ~30 seconds to decide **which single item to cook first**, avoid waste (expiry), and give a defensible reason.
 
 The v0.3 eval resets around that job:
-- **32 hand-authored plain-language scenarios**, 2–5 items each (realistic decision scale)
+- **Plain-language scenarios**, 2–5 items each (realistic decision scale)
 - **JTBD-aligned metrics** in place of full Kendall tau as the headline
+- **Expanded Jun 2026 (Fair-and-Robust plan):** 110 total = 95 ranking + 15 refusal OOS; 16 divergence cases as labeled diagnostic slice
 
-### JTBD Metrics
+### Fair-and-Robust eval harness (added Jun 2026)
 
-| Metric | What it measures | Goal |
+The harness now implements the full statistical protocol from [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md):
+
+| Feature | CLI flag | Default |
 |---|---|---|
-| **cook_now_accuracy** | Correct first item picked | Headline — maximize |
-| **cook_now_set_recall** | Fraction of all urgent items in top-k | Maximize |
-| **must_precede_violations (MPV)** | Near-expiry/short-hold item ranked *after* a long-hold item | **0** — each is a waste risk |
-| **refusal_accuracy** | OOS / adversarial correctly refused | Maximize (trust dimension) |
-| **kendall_tau** | Full ordering quality (now meaningful at 2–5 items) | Secondary |
+| Multi-seed associate floor (mean ± std) | `--assoc-seeds=N` | 20 |
+| Multi-sample LLM variance | `--llm-samples=k` | 1 |
+| Input mode (controls prose advantage) | `--input-mode=native\|features\|prose` | native |
+| Bootstrap 95% CIs (n=2,000) | always on | — |
+| McNemar paired significance matrix | always on | — |
+| Scale stratification by item_count_band | always on | — |
+| Holdout-clean slice (cutoff 2025-05-01) | always on | — |
+| Selection scorecard (primary + CI + guardrails) | always on | — |
+| General report diff | `compare_reports.py` | — |
 
-### Scenario categories
+```bash
+# ML baselines only (expanded set, multi-seed floor)
+python3.11 notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3 --no-llm
 
-| Category | N | What it tests |
-|---|---|---|
-| modal | 15 | Everyday correct decisions under normal conditions |
-| edge | 13 | Waste-avoidance, hold-time tiebreak, demand-vs-perishability divergence |
-| stockout | 5 | Demand wins when windows tied |
-| no_demand | 3 | Zero-forecast item goes last |
-| triage | 5 | Behind-schedule pressure; which item can slip |
-| OOS | 5 | Out-of-scope refusal (WiFi, reporting, empty board, unrecognized item) |
-| adversarial | 4 | Authority override, prompt injection, contradictory hold-time claim, pre-fill injection |
+# Full run with input-mode comparison
+python3.11 notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3 \
+    --input-mode=features  # removes prose advantage
 
-**Total: 50 examples.** 7 intentional divergence examples where the formula gives a different answer than JTBD-correct reasoning (these are signal: high demand or demand density can be a distractor when hold times or urgency differ).
+# Compare native vs features-controlled
+python3.11 scripts/compare_reports.py output/llm_eval_v0.3_v0_3_report.json \
+                                       output/llm_eval_v0.3_v0_3_features_report.json
+```
 
-### v0.3 ML baseline (Jun 2026, LLM pending valid API key)
+### Scenario categories (expanded Jun 2026)
 
-| Comparator | Cook-now% | Set Recall | MPV | Kendall τ |
-|---|---|---|---|---|
-| associate_floor | 68.3% | 0.646 | 14 | −0.081 |
-| v1_rules | **87.8%** | **0.866** | **3** | **0.874** |
-| v2_2_ml | 80.5% | 0.805 | 6 | 0.854 |
+| Category | N (original) | N (expanded) | What it tests |
+|---|---|---|---|
+| modal | 15 | 40 | Everyday correct decisions |
+| edge | 13 | 23 | Waste-avoidance, hold-time, divergence |
+| stockout | 5 | 10 | Demand wins when windows tied |
+| no_demand | 3 | 3 | Zero-forecast item goes last |
+| triage | 5 | 10 | Behind-schedule pressure |
+| OOS | 5 | 15 | Out-of-scope refusal (⬆ for certifiable refusal_accuracy) |
+| adversarial | 4 | 9 | Override, injection, contradictory claim |
 
-**v1 outperforms v2.2 on this set** — 2–5 item decisions are exactly the regime where the rule-based formula is strongest. v2.2's pairwise GBM benefits from larger item sets where pair interactions matter.
+**Total: 110 examples.** 16 intentional divergence examples (labeled diagnostic slice).
 
-**Notable MPV insight:** v1 has 3 must_precede violations (waste-safety failures) vs v2.2's 6. These are cases where a near-expiry item is ranked behind a long-hold item — the most operationally costly error type.
+### v0.3 results (Jun 26 2026, expanded 110-ex set, full LLM + fair input)
 
-Files: `data/llm_eval_set_v0.3.json`, `data/llm_eval_set_v0.3.csv`, `scripts/build_eval_set_v0_3.py`, `prompts/v0.3_system_prompt.md`, `output/llm_eval_v0.3_v0_3_report.json`.
+| Comparator | JTBD% | Formula% | Formula CI 95% | Set Recall | MPV | Refusal | Kendall τ |
+|---|---|---|---|---|---|---|---|
+| associate_floor | 66.3% ±4.4 | 50.5% | [41.0–60.0%] | 0.668 | 41 | — | 0.246 |
+| **v1_rules** | 89.5% | **92.6%** | [87.4–97.9%] | 0.900 | 8 | — | 0.851 |
+| v2_2_ml | 83.2% | 91.6% | [85.3–96.8%] | 0.837 | 16 | — | 0.835 |
+| llm (native/prose) | **95.8%** | 78.9% | [70.5–87.4%] | 0.953 | **2** | **93.3%** | 0.675 |
+| llm (`--input-mode=features`) | 93.6% | **90.4%** | [84.0–95.7%] | — | 1 | 93.3% | — |
+
+**Dual-label breakdown (79 agrees / 16 divergence):**
+
+| Slice | LLM JTBD (native) | LLM Formula (native) | LLM Formula (features) | v1 Formula | v2.2 Formula |
+|---|---|---|---|---|---|
+| Overall | 95.8% | 78.9% | **90.4%** | 92.6% | 91.6% |
+| Labels agree | 96.2% | 93.7% | 98.7% | 94.9% | 91.1% |
+| Labels diverge | 93.8% | 6.2% | 50.0% | 81.2% | 93.8% |
+
+**McNemar significance (formula top-1):** v1 vs v2.2 p=1.0 (n.s.); LLM native vs v1 p=0.009*, vs v2.2 p=0.031*; LLM features vs v1/v2.2 p=1.0 (n.s.).
+
+**Interpretation:** LLM dominates JTBD because it reads prose scenarios aligned with JTBD labels. With fair input (`--input-mode=features`), LLM formula **90.4%** ties v1/v2.2 — the "LLM > ML" narrative was input+label confound. LLM passes guardrails (2 MPV, 93% refusal on 15 ex); selection remains **v2.2 68.9%** on holdout.
+
+Files: `output/llm_eval_v0.3_v0_3_report.json` (native), `output/llm_eval_v0.3_v0_3_features_report.json` (fair), `data/llm_eval_set_v0.3.json`.
 
 ---
 
@@ -193,10 +229,14 @@ Files: `data/llm_eval_set_v0.3.json`, `data/llm_eval_set_v0.3.csv`, `scripts/bui
 | P1 | **Streamlit + React UI connected to v2.2** | ✅ Done | Was code-only; now live via Streamlit pages + FastAPI + Hot Food Hero |
 | P1 | **Docker deployment packaging** | ✅ Done | Single-command demo for stakeholders |
 | P1 | **Auto ML in Scenario Simulator** | ✅ Done | Preview and tablet flow use v2.2 by default |
-| P1 | **JTBD plain-language eval v0.3** | ✅ Done | 32 scenarios, JTBD metrics, updated runner and prompt v0.3 |
-| P2 | **Run LLM on v0.3 set** — needs valid `ANTHROPIC_API_KEY` | 🔲 Open | Run: `python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3` |
-| P2 | **Divergence label validation** — interview associates on high-demand vs expiry cases | 🔲 Open | 4 divergence examples in v0.3 where JTBD answer disagrees with formula |
-| P2 | **Wire remaining React nav views** — enable Scenario Comparison, Impact Dashboard, What-If in sidebar | 🔲 Open | Components exist; need nav routing + polish |
-| P2 | **Real-world validation** — compare recommendations vs actual write-off outcomes on live POS data | 🔲 Open | Formula-derived labels may not reflect true waste reduction |
-| P2 | **Model-faithful explanations (SHAP)** — replace template strings with GBM feature attributions | 🔲 Open | See `ARCHITECTURE_DECISIONS.md` Option A |
-| P3 | **Chain-of-thought prompt** — scratchpad before final ranked_queue | 🔲 Open | v0.3 plain-language format is the right foundation for CoT |
+| P1 | **JTBD plain-language eval v0.3** | ✅ Done | 50→110 examples, JTBD metrics, routing fix, prompt v0.3 |
+| P1 | **Fair-and-Robust eval harness** | ✅ Done | Bootstrap CIs, McNemar, multi-seed, --input-mode, scale strat, scorecard |
+| P1 | **EVAL_METHODOLOGY.md** | ✅ Done | Authoritative selection protocol; separates selection from diagnostic |
+| P2 | **Refresh v2.2 v0.3 baseline (expanded set + CIs)** | ✅ Done | Jun 26 2026: v1 92.6%, v2.2 91.6%, LLM 95.8% JTBD / 78.9% formula (native) |
+| P2 | **Input-mode=features LLM run** | ✅ Done | Jun 26 2026: LLM 90.4% formula ≈ v1/v2.2 (p=1.0); prose advantage quantified |
+| P2 | **Bootstrap CI on 730-scenario holdout** | 🔲 Open | P1 in methodology backlog — required for certifiable selection decision |
+| P2 | **Divergence label validation (16 cases)** | 🔲 Open | Interview associates on high-demand vs expiry conflicts |
+| P2 | **Wire remaining React nav views** | 🔲 Open | Components exist; need nav routing + polish |
+| P2 | **Real-world validation** — live POS data | 🔲 Open | Only true ground truth |
+| P2 | **Model-faithful explanations (SHAP)** | 🔲 Open | See `ARCHITECTURE_DECISIONS.md` Option A |
+| P3 | **Chain-of-thought prompt (v0.4)** | 🔲 Open | v0.3 plain-language format is the right foundation for CoT |

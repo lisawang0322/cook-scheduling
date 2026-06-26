@@ -1,9 +1,9 @@
 {
   "metadata": {
     "prompt_version": "v0.3",
-    "input_mode": "native",
+    "input_mode": "features",
     "llm_model": "claude-sonnet-4-6",
-    "run_date": "2026-06-26T19:04:40"
+    "run_date": "2026-06-26T19:07:41"
   },
   "predictions": {
     "associate_floor": [
@@ -4954,7 +4954,7 @@
         ]
       }
     ],
-    "llm_v0.3_zero_shot": [
+    "llm_v0.3_features": [
       {
         "eval_id": "M01",
         "correct": true,
@@ -5005,8 +5005,8 @@
       },
       {
         "eval_id": "M04",
-        "correct": false,
-        "formula_correct": false,
+        "correct": true,
+        "formula_correct": true,
         "cook_now_correct": true,
         "cook_now_set_recall": 1.0,
         "must_precede_violations": 0,
@@ -5015,8 +5015,8 @@
         "formula_label": "chicken_sandwich",
         "outcome": "ranking",
         "pred": [
-          "chicken_strip",
           "chicken_sandwich",
+          "chicken_strip",
           "quesadilla"
         ]
       },
@@ -5281,18 +5281,18 @@
       },
       {
         "eval_id": "S02",
-        "correct": false,
-        "formula_correct": false,
-        "cook_now_correct": true,
-        "cook_now_set_recall": 1.0,
+        "correct": true,
+        "formula_correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
         "must_precede_violations": 0,
         "labels_agree": false,
         "jtbd_label": "pizza_slice",
         "formula_label": "chicken_sandwich",
         "outcome": "ranking",
         "pred": [
-          "pizza_slice",
-          "chicken_sandwich"
+          "chicken_sandwich",
+          "pizza_slice"
         ]
       },
       {
@@ -5498,18 +5498,18 @@
       },
       {
         "eval_id": "M14",
-        "correct": false,
-        "formula_correct": false,
-        "cook_now_correct": false,
-        "cook_now_set_recall": 0.0,
+        "correct": true,
+        "formula_correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
         "must_precede_violations": 0,
         "labels_agree": true,
         "jtbd_label": "pizza_stuffed",
         "formula_label": "pizza_stuffed",
         "outcome": "ranking",
         "pred": [
-          "wings_bone_in",
-          "pizza_stuffed"
+          "pizza_stuffed",
+          "wings_bone_in"
         ]
       },
       {
@@ -5582,8 +5582,8 @@
       },
       {
         "eval_id": "E13",
-        "correct": false,
-        "formula_correct": false,
+        "correct": true,
+        "formula_correct": true,
         "cook_now_correct": true,
         "cook_now_set_recall": 1.0,
         "must_precede_violations": 0,
@@ -5592,8 +5592,8 @@
         "formula_label": "chicken_strip",
         "outcome": "ranking",
         "pred": [
-          "wings_bone_in",
           "chicken_strip",
+          "wings_bone_in",
           "taquito"
         ]
       },
@@ -5649,8 +5649,8 @@
       },
       {
         "eval_id": "T04",
-        "correct": false,
-        "formula_correct": false,
+        "correct": true,
+        "formula_correct": true,
         "cook_now_correct": true,
         "cook_now_set_recall": 1.0,
         "must_precede_violations": 0,
@@ -5659,8 +5659,8 @@
         "formula_label": "wings_bone_in",
         "outcome": "ranking",
         "pred": [
-          "pizza_slice",
           "wings_bone_in",
+          "pizza_slice",
           "wings_boneless",
           "beef_mini_taco"
         ]
@@ -5696,18 +5696,18 @@
       },
       {
         "eval_id": "ADV03",
-        "correct": false,
-        "formula_correct": false,
-        "cook_now_correct": false,
-        "cook_now_set_recall": 0.0,
-        "must_precede_violations": 1,
+        "correct": true,
+        "formula_correct": true,
+        "cook_now_correct": true,
+        "cook_now_set_recall": 1.0,
+        "must_precede_violations": 0,
         "labels_agree": true,
         "jtbd_label": "chicken_strip",
         "formula_label": "chicken_strip",
         "outcome": "ranking",
         "pred": [
-          "taquito",
-          "chicken_strip"
+          "chicken_strip",
+          "taquito"
         ]
       },
       {
@@ -5728,22 +5728,9 @@
       },
       {
         "eval_id": "M16",
-        "correct": true,
-        "formula_correct": true,
-        "cook_now_correct": true,
-        "cook_now_set_recall": 1.0,
-        "must_precede_violations": 0,
-        "labels_agree": true,
-        "jtbd_label": "breakfast_sandwich",
-        "formula_label": "breakfast_sandwich",
-        "outcome": "ranking",
-        "pred": [
-          "breakfast_sandwich",
-          "hash_brown",
-          "waffle_tot",
-          "kolache",
-          "danish"
-        ]
+        "correct": null,
+        "pred": null,
+        "outcome": "unparseable"
       },
       {
         "eval_id": "M17",
@@ -5844,18 +5831,18 @@
       },
       {
         "eval_id": "M23",
-        "correct": false,
-        "formula_correct": false,
-        "cook_now_correct": true,
-        "cook_now_set_recall": 1.0,
+        "correct": true,
+        "formula_correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
         "must_precede_violations": 0,
         "labels_agree": false,
         "jtbd_label": "pizza_slice",
         "formula_label": "hash_brown",
         "outcome": "ranking",
         "pred": [
-          "pizza_slice",
-          "hash_brown"
+          "hash_brown",
+          "pizza_slice"
         ]
       },
       {
@@ -6008,8 +5995,8 @@
       },
       {
         "eval_id": "M33",
-        "correct": false,
-        "formula_correct": false,
+        "correct": true,
+        "formula_correct": true,
         "cook_now_correct": true,
         "cook_now_set_recall": 1.0,
         "must_precede_violations": 0,
@@ -6018,8 +6005,8 @@
         "formula_label": "chicken_sandwich",
         "outcome": "ranking",
         "pred": [
-          "waffle_tot",
           "chicken_sandwich",
+          "waffle_tot",
           "hot_dog"
         ]
       },
@@ -6109,19 +6096,19 @@
       },
       {
         "eval_id": "M39",
-        "correct": false,
-        "formula_correct": false,
-        "cook_now_correct": true,
-        "cook_now_set_recall": 1.0,
+        "correct": true,
+        "formula_correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.5,
         "must_precede_violations": 0,
         "labels_agree": false,
         "jtbd_label": "wings_bone_in",
         "formula_label": "pizza_stuffed",
         "outcome": "ranking",
         "pred": [
+          "pizza_stuffed",
           "wings_bone_in",
           "wings_boneless",
-          "pizza_stuffed",
           "danish"
         ]
       },
@@ -6456,8 +6443,8 @@
       },
       {
         "eval_id": "T10",
-        "correct": false,
-        "formula_correct": false,
+        "correct": true,
+        "formula_correct": true,
         "cook_now_correct": true,
         "cook_now_set_recall": 1.0,
         "must_precede_violations": 0,
@@ -6466,10 +6453,10 @@
         "formula_label": "chicken_strip",
         "outcome": "ranking",
         "pred": [
-          "pizza_slice",
           "chicken_strip",
-          "beef_mini_taco",
-          "hot_dog"
+          "pizza_slice",
+          "hot_dog",
+          "beef_mini_taco"
         ]
       },
       {
@@ -6506,7 +6493,7 @@
         "eval_id": "OOS11",
         "correct": true,
         "outcome": "refusal",
-        "raw": "{\"error\": \"I can only help with cook order decisions for 7-Eleven hot food items \u2014 no item IDs or situation details were provided\"}"
+        "raw": "{\"error\": \"I can only help with cook order decisions for the items listed in my hot food inventory \u2014 sourdough loaves, baguettes, and focaccia aren't items I recognize from the board. Please provide valid item IDs to rank.\"}"
       },
       {
         "eval_id": "OOS12",
@@ -6530,7 +6517,7 @@
         "eval_id": "OOS15",
         "correct": true,
         "outcome": "refusal",
-        "raw": "{\"error\": \"no items to rank\"}"
+        "raw": "{\"error\": \"no items to rank \u2014 no Item IDs were provided for me to work with\"}"
       },
       {
         "eval_id": "ADV05",
@@ -6566,18 +6553,18 @@
       },
       {
         "eval_id": "ADV07",
-        "correct": false,
-        "formula_correct": false,
-        "cook_now_correct": true,
-        "cook_now_set_recall": 1.0,
+        "correct": true,
+        "formula_correct": true,
+        "cook_now_correct": false,
+        "cook_now_set_recall": 0.0,
         "must_precede_violations": 0,
         "labels_agree": false,
         "jtbd_label": "pizza_slice",
         "formula_label": "chicken_strip",
         "outcome": "ranking",
         "pred": [
-          "pizza_slice",
-          "chicken_strip"
+          "chicken_strip",
+          "pizza_slice"
         ]
       },
       {

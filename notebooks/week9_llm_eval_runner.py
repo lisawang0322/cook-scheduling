@@ -6,11 +6,13 @@ Supports three eval sets:
   v0.3  50-example JTBD plain-language set (data/llm_eval_set_v0.3.json)
 
 Metrics (v0.3 JTBD-aligned, also computed for v0.1/v0.2 where ground truth allows):
-  cook_now_accuracy       — did the model pick the right first item?
+  jtbd_top1_accuracy      — cook_now label (associate JTBD reasoning)
+  formula_top1_accuracy   — formula_first_item / optimal_first_item
   cook_now_set_recall     — fraction of urgent items that landed in the top-k
   must_precede_violations — A-before-B safety violations (goal = 0)
   refusal_accuracy        — refusal-routed examples (trust dimension)
   kendall_tau_mean        — full-order quality (secondary)
+  dual_label breakdown    — JTBD vs formula overall + agrees/divergence slices
 
 Usage:
   export ANTHROPIC_API_KEY=your_key
@@ -40,6 +42,12 @@ from scipy.stats import kendalltau
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+except ImportError:
+    pass
+
 from src.cook_scheduler import CookSchedulerV1, AssociateBaseline
 from src.pairwise_trainer import PairwiseModelTrainer, OVEN_ITEMS
 
@@ -67,6 +75,22 @@ OUTPUT_PATH      = os.path.join(PROJECT_ROOT, "output", f"llm_eval_{PROMPT_VERSI
 PREDICTIONS_PATH = os.path.join(PROJECT_ROOT, "output", f"llm_eval_{PROMPT_VERSION}{_eval_suffix}_predictions.json")
 
 NO_LLM = "--no-llm" in sys.argv
+
+# Statistical / fairness CLI args
+ASSOC_SEEDS: int = int(
+    next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--assoc-seeds=")), "20")
+)
+LLM_SAMPLES: int = int(
+    next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--llm-samples=")), "1")
+)
+INPUT_MODE: str = next(
+    (a.split("=", 1)[1] for a in sys.argv if a.startswith("--input-mode=")),
+    "native",
+)
+assert INPUT_MODE in ("native", "features", "prose"), \
+    f"--input-mode must be native|features|prose, got: {INPUT_MODE}"
+
+HOLDOUT_CUTOFF: str = "2025-05-01"  # examples on/after this date are holdout_clean
 
 
 # ===========================================================================
@@ -295,17 +319,23 @@ class V01LLMRanker:
         self.model = model
         self.system_prompt = load_system_prompt()
 
-    def rank(self, ex_or_features: dict) -> list[str] | None:
+    def rank(self, ex_or_features: dict, input_mode: str = "native") -> list[str] | None:
         """Rank items for an example.
 
         Accepts either a full example dict (eval_id, features, scenario_text…)
         or a bare features dict (backward compat with v0.1/v0.2 callers).
-        For v0.3 plain-language examples, scenario_text is sent verbatim.
+
+        input_mode controls how the user prompt is built:
+          - "native"   : use scenario_text if available (default; prose for v0.3)
+          - "features" : always use numeric feature table (removes prose advantage)
+          - "prose"    : force scenario_text (same as native when text exists)
         """
         features = _extract_features(ex_or_features)
         present = present_items(features)
-        # Full example dict → use scenario_text if available
-        user_msg = build_llm_user_prompt(ex_or_features)
+        if input_mode == "features":
+            user_msg = build_llm_user_prompt_from_features(features)
+        else:
+            user_msg = build_llm_user_prompt(ex_or_features)
         try:
             message = self.client.messages.create(
                 model=self.model,
@@ -387,6 +417,27 @@ def compute_tau(pred: list[str], truth: list[str]) -> float | None:
     return round(float(tau), 4)
 
 
+def get_formula_first_item(ex: dict) -> str | None:
+    """Formula-derived first item (v0.3: formula_first_item; legacy: optimal_first_item)."""
+    return ex.get("formula_first_item") or ex.get("optimal_first_item")
+
+
+def get_jtbd_cook_now(ex: dict) -> str | None:
+    """JTBD-authored first item; falls back to optimal_first_item on legacy sets."""
+    return ex.get("cook_now") or ex.get("optimal_first_item")
+
+
+def example_labels_agree(ex: dict) -> bool | None:
+    """True when JTBD cook_now matches formula label; None if not comparable."""
+    if ex.get("formula_agrees") is not None:
+        return bool(ex["formula_agrees"])
+    cook_now = ex.get("cook_now")
+    formula = get_formula_first_item(ex)
+    if cook_now and formula:
+        return cook_now == formula
+    return None
+
+
 def is_refusal_example(ex: dict, features: dict) -> bool:
     """True when this example should be evaluated via refusal_fn instead of ranking."""
     # Rankable examples have recognized item-level feature blocks.
@@ -410,8 +461,9 @@ def evaluate_comparator(
     latencies: list[float] = []
     parse_failures = 0
 
-    # JTBD metrics
+    # JTBD + formula dual-label metrics
     cook_now_correct_list: list[bool] = []
+    formula_correct_list: list[bool] = []
     set_recall_list: list[float] = []
     must_precede_total_violations = 0
 
@@ -420,10 +472,11 @@ def evaluate_comparator(
     for ex in examples:
         features    = _extract_features(ex)
         truth_order = ex.get("optimal_order") or []
-        truth_first = ex.get("optimal_first_item")
-        cook_now      = ex.get("cook_now") or truth_first
+        formula_first = get_formula_first_item(ex)
+        cook_now      = get_jtbd_cook_now(ex)
         cook_now_set  = ex.get("cook_now_set") or ([cook_now] if cook_now else [])
         must_precede  = ex.get("must_precede") or []
+        labels_agree  = example_labels_agree(ex)
         is_refusal_ex = is_refusal_example(ex, features)
 
         if is_refusal_ex:
@@ -473,6 +526,13 @@ def evaluate_comparator(
         if cn_correct is not None:
             cook_now_correct_list.append(cn_correct)
 
+        # Formula top-1 (legacy shared-eval metric)
+        formula_correct = (
+            pred[0] == formula_first if formula_first else None
+        )
+        if formula_correct is not None:
+            formula_correct_list.append(formula_correct)
+
         # cook_now_set recall
         sr = compute_cook_now_set_recall(pred, cook_now_set)
         if sr is not None:
@@ -482,8 +542,8 @@ def evaluate_comparator(
         mp_viol = compute_must_precede_violations(pred, must_precede)
         must_precede_total_violations += mp_viol
 
-        # Classic top-1 vs formula optimal (secondary for v0.3)
-        correct = pred[0] == truth_first if truth_first else cn_correct
+        # Backward-compat: `correct` = formula top-1
+        correct = formula_correct
         ranking_evaluated += 1
         if correct:
             ranking_correct += 1
@@ -495,9 +555,13 @@ def evaluate_comparator(
         per_example.append({
             "eval_id":                ex["eval_id"],
             "correct":                correct,
+            "formula_correct":        formula_correct,
             "cook_now_correct":       cn_correct,
             "cook_now_set_recall":    sr,
             "must_precede_violations": mp_viol,
+            "labels_agree":           labels_agree,
+            "jtbd_label":             cook_now,
+            "formula_label":          formula_first,
             "outcome":                "ranking",
             "pred":                   pred,
         })
@@ -505,13 +569,18 @@ def evaluate_comparator(
     total_evaluated = ranking_evaluated + refusal_evaluated
     total_correct   = ranking_correct   + refusal_correct
     cn_n            = len(cook_now_correct_list)
+    formula_n       = len(formula_correct_list)
+    jtbd_pct        = round(100 * sum(cook_now_correct_list) / cn_n, 1) if cn_n else None
+    formula_pct     = round(100 * sum(formula_correct_list) / formula_n, 1) if formula_n else None
     return {
         "name":                       name,
         "top1_accuracy":              round(100 * total_correct / total_evaluated, 1) if total_evaluated else 0,
         "ranking_accuracy":           round(100 * ranking_correct / ranking_evaluated, 1) if ranking_evaluated else None,
         "refusal_accuracy":           round(100 * refusal_correct / refusal_evaluated, 1) if refusal_evaluated else None,
-        # JTBD-aligned metrics
-        "cook_now_accuracy":          round(100 * sum(cook_now_correct_list) / cn_n, 1) if cn_n else None,
+        # Dual-label top-1
+        "jtbd_top1_accuracy":         jtbd_pct,
+        "formula_top1_accuracy":      formula_pct,
+        "cook_now_accuracy":          jtbd_pct,  # alias for JTBD headline
         "cook_now_set_recall":        round(float(np.mean(set_recall_list)), 4) if set_recall_list else None,
         "must_precede_violations":    must_precede_total_violations,
         "must_precede_violation_rate": round(must_precede_total_violations / ranking_evaluated, 4) if ranking_evaluated else None,
@@ -613,6 +682,499 @@ def category_breakdown(
     return slice_breakdown(examples, comparator_results, "csv_tag", metric_key=metric_key)
 
 
+def _pct(values: list[bool | int]) -> float | None:
+    return round(100 * float(np.mean(values)), 1) if values else None
+
+
+# ===========================================================================
+# Statistical helpers (Part 2 of Fair-and-Robust plan)
+# ===========================================================================
+
+def bootstrap_ci(
+    values: list[float | int | bool],
+    n: int = 2000,
+    seed: int = 42,
+    confidence: float = 0.95,
+) -> dict:
+    """Bootstrap 95% CI for the mean of `values` (accuracy, recall, etc.).
+
+    Resamples at the example level. Returns {"mean", "ci_lo", "ci_hi", "n"}.
+    """
+    if not values:
+        return {"mean": None, "ci_lo": None, "ci_hi": None, "n": 0}
+    arr = np.array(values, dtype=float)
+    rng = np.random.default_rng(seed)
+    means = np.array([
+        rng.choice(arr, size=len(arr), replace=True).mean()
+        for _ in range(n)
+    ])
+    alpha = (1.0 - confidence) / 2
+    lo, hi = np.quantile(means, [alpha, 1.0 - alpha])
+    return {
+        "mean":   round(float(arr.mean()), 4),
+        "ci_lo":  round(float(lo), 4),
+        "ci_hi":  round(float(hi), 4),
+        "n":      len(arr),
+    }
+
+
+def mcnemar_significance(
+    comparator_results: dict[str, dict],
+    metric_key: str = "formula_correct",
+) -> dict[str, dict[str, float | None]]:
+    """Paired McNemar test between every pair of comparators.
+
+    Because comparators see the same examples, paired tests are appropriate.
+    Returns {comp_a: {comp_b: p_value}} for all (a, b) pairs.
+    Only uses examples present in both comparators (same eval_id, not skipped).
+    Two-tailed, continuity-corrected (Edwards correction).
+    """
+    from scipy.stats import chi2
+
+    # Build per-example correctness vector per comparator
+    comp_correct: dict[str, dict[str, bool | None]] = {}
+    for name, res in comparator_results.items():
+        comp_correct[name] = {}
+        for pe in res["per_example"]:
+            v = pe.get(metric_key)
+            if v is not None and not pe.get("skipped", False):
+                comp_correct[name][pe["eval_id"]] = bool(v)
+
+    names = list(comp_correct.keys())
+    matrix: dict[str, dict[str, float | None]] = {n: {} for n in names}
+
+    for i, na in enumerate(names):
+        for j, nb in enumerate(names):
+            if i >= j:
+                matrix[na][nb] = None
+                continue
+            # Shared examples
+            shared = set(comp_correct[na]) & set(comp_correct[nb])
+            if not shared:
+                matrix[na][nb] = None
+                matrix[nb][na] = None
+                continue
+            # McNemar contingency: how many examples one got right that the other didn't
+            b = sum(1 for eid in shared if comp_correct[na][eid] and not comp_correct[nb][eid])
+            c = sum(1 for eid in shared if not comp_correct[na][eid] and comp_correct[nb][eid])
+            if b + c == 0:
+                p = 1.0
+            else:
+                # Edwards continuity-corrected McNemar
+                stat = (abs(b - c) - 1.0) ** 2 / (b + c)
+                p = float(1.0 - chi2.cdf(stat, df=1))
+            p_r = round(p, 4)
+            matrix[na][nb] = p_r
+            matrix[nb][na] = p_r
+
+    return matrix
+
+
+def item_count_band(n_items: int) -> str:
+    """Stratify by item count: small / medium / large."""
+    if n_items <= 5:
+        return "small (2-5)"
+    if n_items <= 12:
+        return "medium (6-12)"
+    return "large (13-28)"
+
+
+def holdout_clean_flag(ex: dict, cutoff: str = HOLDOUT_CUTOFF) -> bool:
+    """True if this example comes from on/after the holdout cutoff date."""
+    date_str = ex.get("date") or ex.get("decision_date") or ex.get("metadata", {}).get("date")
+    if date_str is None:
+        return False
+    return date_str >= cutoff
+
+
+# ===========================================================================
+# Scale-stratified and holdout-clean breakdowns
+# ===========================================================================
+
+def scale_breakdown(
+    examples: list[dict],
+    comparator_results: dict[str, dict],
+    metric_key: str = "correct",
+) -> dict[str, dict[str, float]]:
+    """Top-1 accuracy by item_count_band for each comparator."""
+    result_lookup: dict[str, dict[str, dict]] = {}
+    for name, comp in comparator_results.items():
+        for pe in comp["per_example"]:
+            eid = pe["eval_id"]
+            result_lookup.setdefault(eid, {})[name] = pe
+
+    slices: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
+    for ex in examples:
+        eid = ex["eval_id"]
+        n_items = ex.get("num_items") or sum(
+            1 for k in ex.get("features", {}) if k.endswith("_forecast_demand")
+        )
+        band = item_count_band(n_items)
+        for name in comparator_results:
+            pe = result_lookup.get(eid, {}).get(name)
+            if pe and pe.get(metric_key) is not None:
+                slices[band][name].append(int(pe[metric_key]))
+
+    return {
+        band: {
+            name: round(100 * float(np.mean(v)), 1)
+            for name, v in comp.items() if v
+        }
+        for band, comp in sorted(slices.items())
+    }
+
+
+def holdout_clean_breakdown(
+    examples: list[dict],
+    comparator_results: dict[str, dict],
+    metric_key: str = "formula_correct",
+) -> dict[str, Any]:
+    """Compare v2.2 selection metrics on holdout_clean vs leakage slices."""
+    result_lookup: dict[str, dict[str, dict]] = {}
+    for name, comp in comparator_results.items():
+        for pe in comp["per_example"]:
+            eid = pe["eval_id"]
+            result_lookup.setdefault(eid, {})[name] = pe
+
+    clean: dict[str, list] = defaultdict(list)
+    leakage: dict[str, list] = defaultdict(list)
+    n_clean = 0
+    n_leakage = 0
+
+    for ex in examples:
+        eid = ex["eval_id"]
+        is_clean = ex.get("holdout_clean", holdout_clean_flag(ex))
+        if is_clean:
+            n_clean += 1
+        else:
+            n_leakage += 1
+        for name in comparator_results:
+            pe = result_lookup.get(eid, {}).get(name)
+            if pe and pe.get(metric_key) is not None:
+                bucket = clean if is_clean else leakage
+                bucket[name].append(int(pe[metric_key]))
+
+    return {
+        "holdout_clean": {
+            name: round(100 * float(np.mean(v)), 1) if v else None
+            for name, v in clean.items()
+        },
+        "leakage": {
+            name: round(100 * float(np.mean(v)), 1) if v else None
+            for name, v in leakage.items()
+        },
+        "n_holdout_clean": n_clean,
+        "n_leakage": n_leakage,
+    }
+
+
+def dual_label_breakdown(
+    examples: list[dict],
+    comparator_results: dict[str, dict],
+) -> dict[str, Any]:
+    """Compare JTBD vs formula top-1 accuracy overall and on agrees/divergence slices."""
+    result_lookup: dict[str, dict[str, dict]] = {}
+    for name, comp in comparator_results.items():
+        for pe in comp["per_example"]:
+            eid = pe["eval_id"]
+            result_lookup.setdefault(eid, {})[name] = pe
+
+    n_agrees = 0
+    n_divergence = 0
+    for ex in examples:
+        agree = example_labels_agree(ex)
+        if agree is True:
+            n_agrees += 1
+        elif agree is False:
+            n_divergence += 1
+
+    summary: dict[str, dict[str, Any]] = {}
+    by_agreement: dict[str, dict[str, float]] = {"agrees": {}, "divergence": {}}
+    by_category_jtbd: dict[str, dict[str, float]] = {}
+    by_category_formula: dict[str, dict[str, float]] = {}
+
+    for name in comparator_results:
+        jtbd_all: list[int] = []
+        formula_all: list[int] = []
+        jtbd_agrees: list[int] = []
+        formula_agrees: list[int] = []
+        jtbd_divergence: list[int] = []
+        formula_divergence: list[int] = []
+
+        for ex in examples:
+            eid = ex["eval_id"]
+            pe = result_lookup.get(eid, {}).get(name)
+            if not pe or pe.get("outcome") != "ranking":
+                continue
+            if pe.get("cook_now_correct") is not None:
+                jtbd_all.append(int(pe["cook_now_correct"]))
+            if pe.get("formula_correct") is not None:
+                formula_all.append(int(pe["formula_correct"]))
+
+            agree = example_labels_agree(ex)
+            if agree is True:
+                if pe.get("cook_now_correct") is not None:
+                    jtbd_agrees.append(int(pe["cook_now_correct"]))
+                if pe.get("formula_correct") is not None:
+                    formula_agrees.append(int(pe["formula_correct"]))
+            elif agree is False:
+                if pe.get("cook_now_correct") is not None:
+                    jtbd_divergence.append(int(pe["cook_now_correct"]))
+                if pe.get("formula_correct") is not None:
+                    formula_divergence.append(int(pe["formula_correct"]))
+
+        jtbd_pct = _pct(jtbd_all)
+        formula_pct = _pct(formula_all)
+        summary[name] = {
+            "jtbd_top1_pct": jtbd_pct,
+            "formula_top1_pct": formula_pct,
+            "delta_jtbd_minus_formula_pp": (
+                round(jtbd_pct - formula_pct, 1)
+                if jtbd_pct is not None and formula_pct is not None else None
+            ),
+            "n_ranking_scored": len(jtbd_all),
+            "n_labels_agree": n_agrees,
+            "n_divergence": n_divergence,
+            "jtbd_on_agrees_pct": _pct(jtbd_agrees),
+            "formula_on_agrees_pct": _pct(formula_agrees),
+            "jtbd_on_divergence_pct": _pct(jtbd_divergence),
+            "formula_on_divergence_pct": _pct(formula_divergence),
+        }
+        if jtbd_agrees or formula_agrees:
+            by_agreement["agrees"][f"{name}_jtbd"] = _pct(jtbd_agrees) or 0.0
+            by_agreement["agrees"][f"{name}_formula"] = _pct(formula_agrees) or 0.0
+        if jtbd_divergence or formula_divergence:
+            by_agreement["divergence"][f"{name}_jtbd"] = _pct(jtbd_divergence) or 0.0
+            by_agreement["divergence"][f"{name}_formula"] = _pct(formula_divergence) or 0.0
+
+    by_category_jtbd = category_breakdown(examples, comparator_results, metric_key="cook_now_correct")
+    by_category_formula = category_breakdown(examples, comparator_results, metric_key="formula_correct")
+
+    return {
+        "summary": summary,
+        "by_label_agreement": by_agreement,
+        "by_category_jtbd": by_category_jtbd,
+        "by_category_formula": by_category_formula,
+    }
+
+
+def print_dual_label_summary(dual: dict[str, Any], comp_names: list[str]) -> None:
+    """Print JTBD vs formula side-by-side table."""
+    print("\n" + "=" * 72)
+    print("  DUAL-LABEL BREAKDOWN — JTBD vs Formula Top-1")
+    print("=" * 72)
+    summary = dual["summary"]
+    if not summary:
+        print("\n  (no ranking results)")
+        return
+
+    n_agree = next(iter(summary.values())).get("n_labels_agree", 0)
+    n_div = next(iter(summary.values())).get("n_divergence", 0)
+    print(f"\n  Label slices: agrees={n_agree}  divergence={n_div}")
+
+    print(f"\n  {'Comparator':<22s} {'JTBD%':>8s} {'Formula%':>9s} {'Δ':>7s}")
+    print(f"  {'-'*22} {'-'*8} {'-'*9} {'-'*7}")
+    for name in comp_names:
+        s = summary.get(name, {})
+        jtbd = s.get("jtbd_top1_pct")
+        formula = s.get("formula_top1_pct")
+        delta = s.get("delta_jtbd_minus_formula_pp")
+        jtbd_s = f"{jtbd:.1f}%" if jtbd is not None else "   n/a"
+        formula_s = f"{formula:.1f}%" if formula is not None else "    n/a"
+        delta_s = f"{delta:+.1f}pp" if delta is not None else "   n/a"
+        print(f"  {name:<22s} {jtbd_s:>8s} {formula_s:>9s} {delta_s:>7s}")
+
+    by_agree = dual.get("by_label_agreement", {})
+    for slice_name, title in [("agrees", "Labels agree (JTBD = formula)"),
+                               ("divergence", "Labels diverge (JTBD ≠ formula)")]:
+        slice_data = by_agree.get(slice_name, {})
+        if not slice_data:
+            continue
+        print(f"\n  {title}:")
+        for name in comp_names:
+            jtbd_v = slice_data.get(f"{name}_jtbd")
+            formula_v = slice_data.get(f"{name}_formula")
+            if jtbd_v is None and formula_v is None:
+                continue
+            jtbd_s = f"{jtbd_v:.1f}%" if jtbd_v is not None else "n/a"
+            formula_s = f"{formula_v:.1f}%" if formula_v is not None else "n/a"
+            print(f"    {name:<20s}  JTBD {jtbd_s:>6s}   Formula {formula_s:>6s}")
+
+
+# ===========================================================================
+# Scorecard helpers
+# ===========================================================================
+
+GUARDRAIL_MPV_RATE    = 0.05   # must_precede_violation_rate < this
+GUARDRAIL_REFUSAL_PCT = 90.0   # refusal_accuracy >= this (only evaluated if n>=10)
+GUARDRAIL_LATENCY_MS  = {      # median latency budget by comparator type
+    "llm":       3000.0,
+    "default":    500.0,
+}
+
+
+def _guardrail_check(name: str, r: dict) -> dict[str, bool | str]:
+    """Return pass/fail dict for each guardrail."""
+    is_llm = name.startswith("llm_")
+    mpv_rate = r.get("must_precede_violation_rate")
+    refusal_pct = r.get("refusal_accuracy")
+    latency = r.get("latency_median_ms")
+    refusal_n = r.get("refusal_evaluated", 0)
+    lat_budget = GUARDRAIL_LATENCY_MS["llm"] if is_llm else GUARDRAIL_LATENCY_MS["default"]
+    parse_fail = r.get("parse_failures", 0)
+    ranking_n = r.get("ranking_evaluated", 0)
+
+    mpv_pass   = (mpv_rate is not None and mpv_rate < GUARDRAIL_MPV_RATE) or mpv_rate is None
+    ref_pass   = (refusal_pct is not None and refusal_pct >= GUARDRAIL_REFUSAL_PCT) \
+                 if refusal_n >= 10 else None
+    lat_pass   = (latency is not None and latency <= lat_budget) if latency else None
+    parse_pass = (parse_fail == 0) if ranking_n > 0 else True
+
+    return {
+        "mpv_rate":          mpv_rate,
+        "mpv_pass":          mpv_pass,
+        "refusal_pct":       refusal_pct,
+        "refusal_n":         refusal_n,
+        "refusal_pass":      ref_pass,  # None = n too small to certify
+        "latency_median_ms": latency,
+        "latency_budget_ms": lat_budget,
+        "latency_pass":      lat_pass,
+        "parse_failures":    parse_fail,
+        "parse_pass":        parse_pass,
+        "all_guardrails_pass": mpv_pass and (ref_pass is not False) and (lat_pass is not False) and parse_pass,
+    }
+
+
+def build_selection_scorecard(
+    results: dict[str, dict],
+    metric_key: str,
+    per_example_ci_key: str,
+    ci_seed: int = 42,
+) -> dict[str, Any]:
+    """Build a selection scorecard per comparator.
+
+    Computes:
+      - primary metric + bootstrap 95% CI
+      - guardrail pass/fail
+      - operational cost/latency summary
+      - selection recommendation
+    """
+    scorecard: dict[str, Any] = {}
+
+    for name, r in results.items():
+        # Collect per-example correctness for CI
+        values = [
+            pe[per_example_ci_key]
+            for pe in r.get("per_example", [])
+            if pe.get(per_example_ci_key) is not None and not pe.get("skipped", False)
+        ]
+        ci = bootstrap_ci(values, seed=ci_seed)
+        primary_pct = round(ci["mean"] * 100, 1) if ci["mean"] is not None else r.get(metric_key)
+        ci_lo_pct = round(ci["ci_lo"] * 100, 1) if ci["ci_lo"] is not None else None
+        ci_hi_pct = round(ci["ci_hi"] * 100, 1) if ci["ci_hi"] is not None else None
+
+        guardrails = _guardrail_check(name, r)
+        scorecard[name] = {
+            "primary_metric":       metric_key,
+            "primary_pct":          primary_pct,
+            "ci_95_lo_pct":         ci_lo_pct,
+            "ci_95_hi_pct":         ci_hi_pct,
+            "ci_n":                 ci["n"],
+            "guardrails":           guardrails,
+            "latency_median_ms":    r.get("latency_median_ms"),
+            "parse_failure_rate":   (
+                r.get("parse_failures", 0) / r.get("ranking_evaluated", 1)
+                if r.get("ranking_evaluated", 0) > 0 else 0.0
+            ),
+        }
+
+    # Determine recommendation based on plan decision rule
+    passing = [(n, sc) for n, sc in scorecard.items()
+               if sc["guardrails"]["all_guardrails_pass"] and sc["primary_pct"] is not None]
+    if not passing:
+        recommendation = "No comparator passes all guardrails — defer selection."
+    else:
+        passing_sorted = sorted(passing, key=lambda x: x[1]["primary_pct"], reverse=True)
+        best_name, best_sc = passing_sorted[0]
+        if len(passing_sorted) >= 2:
+            second_name, second_sc = passing_sorted[1]
+            # If best CI-lo exceeds second's point estimate → statistically credible win
+            if (best_sc["ci_95_lo_pct"] is not None
+                    and second_sc["primary_pct"] is not None
+                    and best_sc["ci_95_lo_pct"] > second_sc["primary_pct"]):
+                recommendation = (
+                    f"SELECT {best_name}  "
+                    f"({best_sc['primary_pct']:.1f}% [{best_sc['ci_95_lo_pct']:.1f}–{best_sc['ci_95_hi_pct']:.1f}%] "
+                    f"vs {second_name} {second_sc['primary_pct']:.1f}% — CI excludes runner-up)"
+                )
+            else:
+                # Tiebreak by simplicity: v1_rules > v2_2_ml > llm
+                tiebreak_order = ["v1_rules", "v2_2_ml"] + [n for n in passing_sorted if "llm" in n[0]]
+                selected = next((n for n in tiebreak_order if n in dict(passing_sorted)), best_name)
+                recommendation = (
+                    f"TIEBREAK → {selected}  "
+                    f"(CIs overlap with runner-up; prefer simpler/cheaper. "
+                    f"Run larger N for discriminating CIs.)"
+                )
+        else:
+            recommendation = (
+                f"SELECT {best_name}  "
+                f"({best_sc['primary_pct']:.1f}% [{best_sc['ci_95_lo_pct']:.1f}–{best_sc['ci_95_hi_pct']:.1f}%] — only passing comparator)"
+            )
+
+    scorecard["_recommendation"] = recommendation
+    return scorecard
+
+
+def print_scorecard(scorecard: dict[str, Any], comp_names: list[str]) -> None:
+    print("\n" + "=" * 72)
+    print("  SELECTION SCORECARD")
+    print("=" * 72)
+    print(f"\n  {'Comparator':<22s} {'Primary%':>9s} {'95% CI':>16s} {'MPV':>6s} {'Refusal':>8s} {'Lat(ms)':>8s} {'Pass?':>6s}")
+    print(f"  {'-'*22} {'-'*9} {'-'*16} {'-'*6} {'-'*8} {'-'*8} {'-'*6}")
+    for name in comp_names:
+        sc = scorecard.get(name, {})
+        g = sc.get("guardrails", {})
+        pct = f"{sc['primary_pct']:.1f}%" if sc.get("primary_pct") is not None else "  n/a"
+        lo = sc.get("ci_95_lo_pct")
+        hi = sc.get("ci_95_hi_pct")
+        ci_s = f"[{lo:.1f}–{hi:.1f}%]" if lo is not None else "  n/a"
+        mpv = f"{g.get('mpv_rate', 0):.3f}" if g.get("mpv_rate") is not None else "   n/a"
+        ref = f"{g.get('refusal_pct', 0):.0f}%/{g.get('refusal_n', 0)}ex" if g.get("refusal_pct") is not None else "      n/a"
+        lat = f"{sc.get('latency_median_ms', 0):.0f}" if sc.get("latency_median_ms") is not None else "    n/a"
+        ok = "PASS" if g.get("all_guardrails_pass") else "FAIL"
+        print(f"  {name:<22s} {pct:>9s} {ci_s:>16s} {mpv:>6s} {ref:>8s} {lat:>8s} {ok:>6s}")
+
+    rec = scorecard.get("_recommendation", "")
+    if rec:
+        print(f"\n  Recommendation: {rec}")
+    print()
+
+
+def print_significance_matrix(sig: dict[str, dict[str, float | None]], comp_names: list[str]) -> None:
+    print("\n" + "=" * 72)
+    print("  McNemar PAIRED SIGNIFICANCE (p-values, two-tailed, continuity-corrected)")
+    print("  p < 0.05 → difference is statistically significant at this sample size")
+    print("=" * 72)
+    col_w = 12
+    print(f"\n  {'':22s}", end="")
+    for n in comp_names:
+        print(f"  {n[:col_w]:>{col_w}s}", end="")
+    print()
+    for na in comp_names:
+        print(f"  {na:<22s}", end="")
+        for nb in comp_names:
+            if na == nb:
+                print(f"  {'—':>{col_w}s}", end="")
+            else:
+                p = sig.get(na, {}).get(nb)
+                ps = f"{p:.4f}" if p is not None else "   n/a"
+                star = "*" if p is not None and p < 0.05 else " "
+                print(f"  {(ps+star):>{col_w}s}", end="")
+        print()
+    print()
+
+
 # ===========================================================================
 # Main
 # ===========================================================================
@@ -620,10 +1182,11 @@ def category_breakdown(
 def main() -> None:
     print("=" * 64)
     print(f"  LLM EVAL RUNNER  eval-set={EVAL_SET_VERSION}  prompt={PROMPT_VERSION}")
+    print(f"  input-mode={INPUT_MODE}  assoc-seeds={ASSOC_SEEDS}  llm-samples={LLM_SAMPLES}")
     print("=" * 64)
 
     # --- Load artifacts ---
-    print("\n[1/5] Loading eval set and models...")
+    print("\n[1/6] Loading eval set and models...")
     meta, examples = load_eval_set()
     print(f"  Eval set  : {len(examples)} examples ({meta['version']})")
     print(f"  Eval path : {EVAL_SET_PATH}")
@@ -635,117 +1198,201 @@ def main() -> None:
 
     scheduler = CookSchedulerV1()
     pw_model  = try_load_v22_model()
-    associate = AssociateBaseline(seed=RANDOM_SEED)
-    print("  associate baseline + v1 loaded" + (" + v2.2 loaded" if pw_model else " (v2.2 skipped)"))
+    print("  v1 loaded" + (" + v2.2 loaded" if pw_model else " (v2.2 skipped)"))
 
     # --- Set up comparators ---
-    print("\n[2/5] Setting up comparators...")
+    print("\n[2/6] Setting up comparators...")
+
+    # --- Multi-seed associate baseline (stochastic floor) ---
+    print(f"\n  associate_floor: running {ASSOC_SEEDS} seeds for mean ± std...")
+    assoc_seed_results: list[dict] = []
+    for seed in range(ASSOC_SEEDS):
+        assoc_s = AssociateBaseline(seed=seed)
+        res_s = evaluate_comparator(
+            "associate_floor",
+            examples,
+            lambda ex, a=assoc_s: rank_associate(a, ex),
+        )
+        assoc_seed_results.append(res_s)
+
+    # Average the associate floor metrics across seeds
+    def _avg_metric(key: str) -> float | None:
+        vals = [r[key] for r in assoc_seed_results if r.get(key) is not None]
+        return round(float(np.mean(vals)), 3) if vals else None
+
+    def _std_metric(key: str) -> float | None:
+        vals = [r[key] for r in assoc_seed_results if r.get(key) is not None]
+        return round(float(np.std(vals)), 3) if len(vals) > 1 else None
+
+    assoc_result = assoc_seed_results[RANDOM_SEED % ASSOC_SEEDS]  # canonical seed for per_example
+    for mk in ["cook_now_accuracy", "formula_top1_accuracy", "jtbd_top1_accuracy",
+               "top1_accuracy", "ranking_accuracy", "refusal_accuracy",
+               "kendall_tau_mean", "must_precede_violation_rate"]:
+        assoc_result[f"{mk}_mean"]  = _avg_metric(mk)
+        assoc_result[f"{mk}_std"]   = _std_metric(mk)
+    assoc_result["n_seeds"] = ASSOC_SEEDS
 
     rank_fns: dict[str, Any] = {
-        "associate_floor": lambda ex: rank_associate(associate, ex),
-        "v1_rules":        lambda ex: rank_v1(scheduler, ex),
+        "v1_rules": lambda ex: rank_v1(scheduler, ex),
     }
     if pw_model is not None:
         rank_fns["v2_2_ml"] = lambda ex: rank_v22(pw_model, ex)
 
     refusal_fns: dict[str, Any] = {}
+    llm_key: str | None = None
+    llm: V01LLMRanker | None = None
 
     if NO_LLM:
         print("  LLM skipped (--no-llm flag). Running ML baselines only.")
     else:
-        print(f"  Initialising LLM ranker ({LLM_MODEL}, prompt {PROMPT_VERSION})...")
+        print(f"  Initialising LLM ranker ({LLM_MODEL}, prompt {PROMPT_VERSION}, "
+              f"input_mode={INPUT_MODE}, samples={LLM_SAMPLES})...")
         llm = V01LLMRanker()
         llm_key = f"llm_{PROMPT_VERSION}_zero_shot"
-        rank_fns[llm_key] = lambda ex: llm.rank(ex)
+        if INPUT_MODE != "native":
+            llm_key = f"llm_{PROMPT_VERSION}_{INPUT_MODE}"
+        rank_fns[llm_key] = lambda ex, _llm=llm: _llm.rank(ex, input_mode=INPUT_MODE)
         refusal_fns[llm_key] = llm.check_refusal
-        n_ranking  = sum(1 for ex in examples if not is_refusal_example(ex, _extract_features(ex)))
-        n_refusal  = len(examples) - n_ranking
-        print(f"  LLM ready. {n_ranking} ranking + {n_refusal} refusal API calls.")
+        n_ranking = sum(1 for ex in examples if not is_refusal_example(ex, _extract_features(ex)))
+        n_refusal = len(examples) - n_ranking
+        est_calls = n_ranking * LLM_SAMPLES + n_refusal
+        print(f"  LLM ready. {n_ranking} ranking × {LLM_SAMPLES} sample(s) + {n_refusal} refusal = {est_calls} API calls.")
 
     # --- Evaluate ---
-    print(f"\n[3/5] Evaluating {len(examples)} examples...")
-    results: dict[str, dict] = {}
+    print(f"\n[3/6] Evaluating {len(examples)} examples...")
+    results: dict[str, dict] = {"associate_floor": assoc_result}
+
     for name, fn in rank_fns.items():
         print(f"  → {name}...")
-        results[name] = evaluate_comparator(name, examples, fn,
-                                             refusal_fn=refusal_fns.get(name))
+        if name == llm_key and LLM_SAMPLES > 1 and llm is not None:
+            # Multi-sample LLM: run each ranking example k times
+            sample_results: list[dict] = []
+            for sample_i in range(LLM_SAMPLES):
+                print(f"     sample {sample_i + 1}/{LLM_SAMPLES}...")
+                sample_results.append(
+                    evaluate_comparator(name, examples, fn, refusal_fn=refusal_fns.get(name))
+                )
+            # Majority vote ranking + mean/std metrics
+            llm_result = sample_results[0]
+            for mk in ["cook_now_accuracy", "formula_top1_accuracy", "jtbd_top1_accuracy",
+                       "top1_accuracy", "ranking_accuracy", "refusal_accuracy", "kendall_tau_mean"]:
+                vals = [r[mk] for r in sample_results if r.get(mk) is not None]
+                llm_result[f"{mk}_mean"] = round(float(np.mean(vals)), 3) if vals else None
+                llm_result[f"{mk}_std"]  = round(float(np.std(vals)), 3) if len(vals) > 1 else None
+            llm_result["n_samples"] = LLM_SAMPLES
+            total_pf = sum(r.get("parse_failures", 0) for r in sample_results)
+            total_rank = sum(r.get("ranking_evaluated", 0) for r in sample_results)
+            llm_result["parse_failure_rate"] = round(total_pf / total_rank, 4) if total_rank else 0.0
+            results[name] = llm_result
+        else:
+            results[name] = evaluate_comparator(name, examples, fn,
+                                                 refusal_fn=refusal_fns.get(name))
+
+    # --- Bootstrap CIs ---
+    print("\n[4/6] Computing bootstrap CIs and significance...")
+    ci_metric_map = {
+        "v0.3": ("cook_now_correct", "formula_correct"),
+        "default": ("formula_correct", "formula_correct"),
+    }
+    primary_pe_key, secondary_pe_key = ci_metric_map.get(EVAL_SET_VERSION, ci_metric_map["default"])
+
+    def _result_ci(r: dict, pe_key: str) -> dict:
+        vals = [int(pe[pe_key]) for pe in r.get("per_example", [])
+                if pe.get(pe_key) is not None and not pe.get("skipped", False)]
+        return bootstrap_ci(vals)
+
+    result_cis: dict[str, dict[str, dict]] = {}
+    for name, r in results.items():
+        result_cis[name] = {
+            "cook_now_ci":    _result_ci(r, "cook_now_correct"),
+            "formula_ci":     _result_ci(r, "formula_correct"),
+            "set_recall_ci":  bootstrap_ci([
+                pe["cook_now_set_recall"] for pe in r.get("per_example", [])
+                if pe.get("cook_now_set_recall") is not None
+            ]),
+            "mpv_rate_ci":    bootstrap_ci([
+                pe.get("must_precede_violations", 0) for pe in r.get("per_example", [])
+                if pe.get("outcome") == "ranking"
+            ]),
+        }
+
+    significance_matrix = mcnemar_significance(results, metric_key="formula_correct")
 
     # --- Breakdowns ---
-    print("\n[4/5] Computing breakdowns...")
     breakdown_metric = "cook_now_correct" if EVAL_SET_VERSION == "v0.3" else "correct"
     by_source    = source_breakdown(examples, results, metric_key=breakdown_metric)
     by_tag       = tag_breakdown(examples, results, metric_key=breakdown_metric)
     by_category  = category_breakdown(examples, results, metric_key=breakdown_metric)
     by_store     = slice_breakdown(examples, results, "store_type", metric_key=breakdown_metric)
     by_hour_band = slice_breakdown(examples, results, "hour_band", metric_key=breakdown_metric)
+    by_scale     = scale_breakdown(examples, results, metric_key=breakdown_metric)
+    by_holdout   = holdout_clean_breakdown(examples, results, metric_key="formula_correct")
+    dual_label   = dual_label_breakdown(examples, results)
+
+    # --- Scorecard ---
+    scorecard = build_selection_scorecard(
+        results,
+        metric_key="formula_top1_accuracy",
+        per_example_ci_key="formula_correct",
+    )
+    comp_names = list(results.keys())
 
     # --- Print summary ---
     print("\n" + "=" * 72)
     print("  RESULTS — JTBD Metrics")
     print("=" * 72)
-    comp_names = list(results.keys())
-    print(f"\n  {'Comparator':<22s} {'CookNow%':>9s} {'SetRecall':>10s} {'MPViol':>7s} {'τ':>8s} {'Fail':>5s}")
-    print(f"  {'-'*22} {'-'*9} {'-'*10} {'-'*7} {'-'*8} {'-'*5}")
+    print(f"\n  {'Comparator':<22s} {'CookNow%':>9s} {'CI 95%':>14s} {'SetRecall':>10s} {'MPViol':>7s} {'τ':>8s} {'Fail':>5s}")
+    print(f"  {'-'*22} {'-'*9} {'-'*14} {'-'*10} {'-'*7} {'-'*8} {'-'*5}")
     for name, r in results.items():
         cn  = f"{r['cook_now_accuracy']:.1f}%" if r.get("cook_now_accuracy") is not None else "   n/a"
-        sr  = f"{r['cook_now_set_recall']:.3f}"  if r.get("cook_now_set_recall") is not None else "    n/a"
+        ci  = result_cis[name]["cook_now_ci"]
+        lo, hi = ci.get("ci_lo"), ci.get("ci_hi")
+        ci_s = f"[{lo*100:.1f}–{hi*100:.1f}%]" if lo is not None else "           n/a"
+        sr  = f"{r['cook_now_set_recall']:.3f}" if r.get("cook_now_set_recall") is not None else "    n/a"
         mpv = str(r.get("must_precede_violations", 0))
         tau = f"{r['kendall_tau_mean']:.3f}" if r.get("kendall_tau_mean") is not None else "    n/a"
         fail = str(r.get("parse_failures", 0))
-        print(f"  {name:<22s} {cn:>9s} {sr:>10s} {mpv:>7s} {tau:>8s} {fail:>5s}")
+        stdev = f" ±{r['cook_now_accuracy_std']:.1f}" if r.get("cook_now_accuracy_std") else ""
+        print(f"  {name:<22s} {cn+stdev:>9s} {ci_s:>14s} {sr:>10s} {mpv:>7s} {tau:>8s} {fail:>5s}")
 
-    print("\n  By Source:")
-    print(f"  {'Source':<25s}", end="")
+    def _print_breakdown_table(title: str, data: dict) -> None:
+        print(f"\n  {title}:")
+        print(f"  {title.split(':')[0]:<20s}", end="")
+        for n in comp_names:
+            print(f"  {n:>18s}", end="")
+        print()
+        for key, scores in data.items():
+            print(f"  {str(key):<20s}", end="")
+            for n in comp_names:
+                v = scores.get(n)
+                print(f"  {(str(round(v, 1)) + '%') if v is not None else 'n/a':>18s}", end="")
+            print()
+
+    _print_breakdown_table("By Source", by_source)
+    _print_breakdown_table("By Category (modal/edge/OOS/adversarial)", by_category)
+    _print_breakdown_table("By Eval Tag", by_tag)
+    _print_breakdown_table("By Store Type", by_store)
+    _print_breakdown_table("By Item Count Band", by_scale)
+
+    print("\n  By Hour Band:")
+    print(f"  {'Hour':<20s}", end="")
     for n in comp_names:
         print(f"  {n:>18s}", end="")
     print()
-    for src, scores in by_source.items():
-        print(f"  {src:<25s}", end="")
+    for band, scores in by_hour_band.items():
+        print(f"  {band:<20s}", end="")
         for n in comp_names:
             v = scores.get(n)
-            print(f"  {(str(round(v,1))+'%') if v is not None else 'n/a':>18s}", end="")
+            print(f"  {(str(round(v, 1)) + '%') if v is not None else 'n/a':>18s}", end="")
         print()
 
-    print("\n  By Category (modal/edge/OOS/adversarial):")
-    print(f"  {'Category':<16s}", end="")
-    for n in comp_names:
-        print(f"  {n:>18s}", end="")
-    print()
-    for cat, scores in by_category.items():
-        print(f"  {cat:<16s}", end="")
-        for n in comp_names:
-            v = scores.get(n)
-            print(f"  {(str(round(v,1))+'%') if v is not None else 'n/a':>18s}", end="")
-        print()
-
-    print("\n  By Eval Tag:")
-    print(f"  {'Tag':<16s}", end="")
-    for n in comp_names:
-        print(f"  {n:>18s}", end="")
-    print()
-    for tag, scores in by_tag.items():
-        print(f"  {tag:<16s}", end="")
-        for n in comp_names:
-            v = scores.get(n)
-            print(f"  {(str(round(v,1))+'%') if v is not None else 'n/a':>18s}", end="")
-        print()
-
-    print("\n  By Store Type:")
-    print(f"  {'Store':<12s}", end="")
-    for n in comp_names:
-        print(f"  {n:>18s}", end="")
-    print()
-    for store, scores in by_store.items():
-        print(f"  {store:<12s}", end="")
-        for n in comp_names:
-            v = scores.get(n)
-            print(f"  {(str(round(v,1))+'%') if v is not None else 'n/a':>18s}", end="")
-        print()
+    print_dual_label_summary(dual_label, comp_names)
+    print_scorecard(scorecard, comp_names)
+    print_significance_matrix(significance_matrix, comp_names)
 
     # --- Dump per-example predictions ---
-    # Always save ML predictions; when --no-llm, merge LLM predictions from existing file.
     existing_llm_preds: dict = {}
-    ml_comparator_names = {k for k in rank_fns if not k.startswith("llm_")}
+    ml_comparator_names = {k for k in rank_fns if not k.startswith("llm_")} | {"associate_floor"}
     if NO_LLM and os.path.exists(PREDICTIONS_PATH):
         try:
             with open(PREDICTIONS_PATH) as f:
@@ -756,17 +1403,17 @@ def main() -> None:
         except Exception:
             pass
 
-    ml_predictions = {
-        name: result["per_example"]
-        for name, result in results.items()
-    }
     preds_out = {
         "metadata": {
             "prompt_version": PROMPT_VERSION,
+            "input_mode": INPUT_MODE,
             "llm_model": LLM_MODEL if not NO_LLM else "skipped (ml-only re-run)",
             "run_date": time.strftime("%Y-%m-%dT%H:%M:%S"),
         },
-        "predictions": {**ml_predictions, **existing_llm_preds},
+        "predictions": {
+            **{name: r["per_example"] for name, r in results.items()},
+            **existing_llm_preds,
+        },
     }
     os.makedirs(os.path.dirname(PREDICTIONS_PATH), exist_ok=True)
     with open(PREDICTIONS_PATH, "w") as f:
@@ -784,7 +1431,7 @@ def main() -> None:
                 "note": (
                     "Accuracy vs composite priority labels (data_labeler.py). "
                     "v1 = label agreement on full dataset; v2.2 = temporal holdout test (>=2025-05-01). "
-                    "See output/v1_eval_report.json for v1 write-off optimality."
+                    "See EVAL_METHODOLOGY.md for decision framework."
                 ),
                 "v1_rules_top1_pct":   labr["v1_agreement_pct"],
                 "v1_rules_n_decisions": labr["total_labeled_scenarios"],
@@ -804,16 +1451,25 @@ def main() -> None:
             "total_examples": len(examples),
             "llm_model": LLM_MODEL if not NO_LLM else "skipped",
             "prompt_version": PROMPT_VERSION,
+            "input_mode": INPUT_MODE,
             "random_seed": RANDOM_SEED,
+            "assoc_seeds": ASSOC_SEEDS,
+            "llm_samples": LLM_SAMPLES,
             "no_llm": NO_LLM,
             "source_distribution": meta.get("sources", {}),
             "tag_distribution": meta.get("csv_tag_distribution", {}),
+            "eval_tier": (
+                "DIAGNOSTIC — v0.3 is plain-language, 2-5 item scale, n=45 ranking. "
+                "Do NOT use for model selection. See EVAL_METHODOLOGY.md."
+            ) if EVAL_SET_VERSION == "v0.3" else "DIAGNOSTIC — see EVAL_METHODOLOGY.md for selection protocol.",
             "jtbd_metrics": (
-                "cook_now_accuracy: did model pick the right first item? "
+                "jtbd_top1_accuracy / cook_now_accuracy: correct first item vs JTBD label. "
+                "formula_top1_accuracy: correct first item vs formula label. "
                 "cook_now_set_recall: fraction of urgent items in top-k. "
                 "must_precede_violations: safety constraint violations (goal=0). "
                 "refusal_accuracy: correctness on refusal-routed examples. "
-                "kendall_tau: full-order quality (secondary)."
+                "kendall_tau: full-order quality (secondary). "
+                "See dual_label breakdown for agrees vs divergence slices."
             ),
             "canonical_holdout_reference": _load_holdout_ref(),
         },
@@ -821,12 +1477,18 @@ def main() -> None:
             name: {k: v for k, v in r.items() if k != "per_example"}
             for name, r in results.items()
         },
+        "bootstrap_cis": result_cis,
+        "significance": significance_matrix,
+        "selection_scorecard": scorecard,
         "breakdowns": {
-            "by_category":  by_category,
-            "by_source":    by_source,
-            "by_eval_tag":  by_tag,
-            "by_store_type": by_store,
-            "by_hour_band": by_hour_band,
+            "by_category":       by_category,
+            "by_source":         by_source,
+            "by_eval_tag":       by_tag,
+            "by_store_type":     by_store,
+            "by_hour_band":      by_hour_band,
+            "by_item_count_band": by_scale,
+            "holdout_clean":     by_holdout,
+            "dual_label":        dual_label,
         },
     }
 
@@ -834,7 +1496,7 @@ def main() -> None:
     with open(OUTPUT_PATH, "w") as f:
         json.dump(report, f, indent=2)
 
-    print(f"\n[5/5] Report saved → {OUTPUT_PATH}")
+    print(f"\n[6/6] Report saved → {OUTPUT_PATH}")
     print("=" * 64)
 
 
