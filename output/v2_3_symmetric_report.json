@@ -1,0 +1,44 @@
+{
+  "model_type": "pairwise_gradient_boosting",
+  "cross_validation": {
+    "note": "CV skipped (large dataset \u2014 see pairwise_val_accuracy in temporal_split)"
+  },
+  "training_set": {
+    "n_samples": 715644,
+    "n_features": 36,
+    "label_distribution": {
+      "1": 357822,
+      "0": 357822
+    }
+  },
+  "training_accuracy": 79.6,
+  "feature_importance_top10": {
+    "diff_demand_density": 0.2944231953919903,
+    "diff_urgency": 0.1364977641809839,
+    "diff_hold_time": 0.12131107122324412,
+    "diff_time_remaining": 0.10708992106966538,
+    "b_demand": 0.06344732855221348,
+    "a_cooked_qty": 0.05661770453982126,
+    "a_hist_wo_overall": 0.03317383854583863,
+    "b_hist_wo_overall": 0.03020100070384875,
+    "diff_hist_wo_overall": 0.028708481931489654,
+    "a_demand": 0.028650066205520935
+  },
+  "improvements": {
+    "symmetric_pairs": true,
+    "use_proba_aggregation": true,
+    "sample_weights": false,
+    "n_estimators": 200,
+    "note": "Symmetric augmentation removes item-position bias and balances label distribution. Proba aggregation preserves confidence signal and avoids intransitive rank cycles. No weights gives edge/near-tie pairs equal contribution during training."
+  },
+  "temporal_split": {
+    "cutoff_date": "2025-05-01",
+    "train_scenarios": 1434,
+    "test_scenarios": 730,
+    "pairwise_val_accuracy": 79.5,
+    "test_top1_accuracy": 66.0,
+    "full_top1_accuracy": 68.3,
+    "v22_test_top1_for_comparison": 68.9,
+    "delta_vs_v22": -2.9
+  }
+}

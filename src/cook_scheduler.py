@@ -39,6 +39,43 @@ class CookSchedulerV1:
     # Grill items (subset — noted for equipment routing, still scheduled)
     GRILL_ITEMS = {"hot_dog", "sausage", "taquito", "buffalo_roller", "corn_dog"}
 
+    @classmethod
+    def pending_from_features(cls, features: dict) -> tuple[float, list[dict[str, Any]]]:
+        """Build pending items for v1 ranking from a scenario features dict.
+
+        Uses OVEN_ITEMS order and the same window reconstruction as
+        data_labeler.py v1-agreement check so eval harness metrics match
+        output/labeling_report.json v1_agreement_pct.
+        """
+        decision_hour = features["decision_hour"] + 0.25
+        pending: list[dict[str, Any]] = []
+        for item in cls.OVEN_ITEMS:
+            if f"{item}_forecast_demand" not in features:
+                continue
+            pending.append({
+                "item": item,
+                "forecast_demand": features[f"{item}_forecast_demand"],
+                "lcu": features[f"{item}_lcu"],
+                "hold_time_hours": features[f"{item}_hold_time"],
+                "exact_multiples": features.get(f"{item}_exact_multiples", True),
+                "window_start_hour": features["decision_hour"],
+                "window_end_hour": int(
+                    features["decision_hour"]
+                    + features[f"{item}_time_remaining"]
+                    + 0.25
+                ),
+            })
+        return decision_hour, pending
+
+    @classmethod
+    def rank_from_features(cls, features: dict) -> list[str]:
+        """Return v1 ranked item IDs for a scenario features dict."""
+        decision_hour, pending = cls.pending_from_features(features)
+        if not pending:
+            return []
+        ranked = cls().rank_items(decision_hour, pending)
+        return [r["item"] for r in ranked]
+
     def score_item(self, item: str, forecast_demand: int, lcu: int,
                    hold_time_hours: int, time_remaining_hours: float) -> float:
         """Calculate priority score for a single item at a decision point.
@@ -102,8 +139,13 @@ class CookSchedulerV1:
                 "time_remaining_hours": round(time_remaining, 2),
             })
 
-        # Sort by score descending, tiebreak by hold_time ascending (shorter = more urgent)
-        scored.sort(key=lambda x: (-x["score"], x["hold_time_hours"]))
+        # Sort by score desc; tiebreak hold_time asc, then canonical OVEN_ITEMS order
+        item_order = type(self)._ITEM_ORDER
+        scored.sort(key=lambda x: (
+            -x["score"],
+            x["hold_time_hours"],
+            item_order.get(x["item"], 9999),
+        ))
 
         for i, entry in enumerate(scored):
             entry["rank"] = i + 1
@@ -179,6 +221,11 @@ class CookSchedulerV1:
             "grill_items": grill,
             "explanations": explanations,
         }
+
+
+CookSchedulerV1._ITEM_ORDER = {
+    item: i for i, item in enumerate(CookSchedulerV1.OVEN_ITEMS)
+}
 
 
 class AssociateBaseline:

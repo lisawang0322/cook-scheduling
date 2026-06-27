@@ -1,0 +1,46 @@
+{
+  "model_type": "lambdarank_lightgbm",
+  "training_set": {
+    "n_scenarios": 1434,
+    "n_rows": 32142,
+    "n_features": 16
+  },
+  "ndcg_at_1": 0.7739,
+  "ndcg_at_3": 0.7894,
+  "ndcg_at_5": 0.8274,
+  "ranking_accuracy": {
+    "ranking_top1_accuracy": 71.6,
+    "total_evaluated": 2164
+  },
+  "feature_importance_top10": {
+    "day_of_week": 1298,
+    "hist_wo_hour": 1275,
+    "hist_wo_store": 1146,
+    "demand_vs_avg": 1082,
+    "decision_hour": 838,
+    "demand_density": 679,
+    "hist_wo_overall": 664,
+    "demand": 528,
+    "store_type_encoded": 436,
+    "hold_time": 278
+  },
+  "temporal_split": {
+    "cutoff_date": "2025-05-01",
+    "train_scenarios": 1434,
+    "test_scenarios": 730
+  },
+  "test_ndcg_at_1": 0.7226,
+  "test_ndcg_at_3": 0.753,
+  "test_ndcg_at_5": 0.7975,
+  "test_top1_accuracy": 66.2,
+  "full_top1_accuracy": 71.6,
+  "train_ndcg_at_1": 0.8,
+  "train_top1_accuracy": 74.3,
+  "improvements": {
+    "listwise_structure": true,
+    "ndcg_optimised_directly": true,
+    "no_pairwise_expansion": true,
+    "no_win_counting": true,
+    "note": "LGBMRanker(objective=lambdarank) with group=scenario and graded reverse-rank relevance. One row per (scenario, item) instead of C(n,2) pairs. Eliminates win-counting at inference. Linear label_gain prevents 2^label blow-up across 28 grades."
+  }
+}

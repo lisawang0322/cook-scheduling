@@ -253,26 +253,11 @@ class DataLabeler:
             rank_size_dist[scenario["num_items_ranked"]] += 1
 
         # V1 agreement: how often does optimal match v1's top pick?
-        scheduler = CookSchedulerV1()
         v1_agreement = 0
         for scenario in self.labeled_data:
             features = scenario["features"]
-            decision_hour = features["decision_hour"] + 0.25
-            # Reconstruct pending items for v1 scoring
-            pending = []
-            for item in CookSchedulerV1.OVEN_ITEMS:
-                if f"{item}_forecast_demand" in features:
-                    pending.append({
-                        "item": item,
-                        "forecast_demand": features[f"{item}_forecast_demand"],
-                        "lcu": features[f"{item}_lcu"],
-                        "hold_time_hours": features[f"{item}_hold_time"],
-                        "exact_multiples": features[f"{item}_exact_multiples"],
-                        "window_start_hour": features["decision_hour"],
-                        "window_end_hour": int(features["decision_hour"] + features[f"{item}_time_remaining"] + 0.25),
-                    })
-            ranked = scheduler.rank_items(decision_hour, pending)
-            if ranked and ranked[0]["item"] == scenario["optimal_first_item"]:
+            ranked = CookSchedulerV1.rank_from_features(features)
+            if ranked and ranked[0] == scenario["optimal_first_item"]:
                 v1_agreement += 1
 
         return {

@@ -113,7 +113,8 @@ def compute_historical_features(cook_logs: list[dict[str, Any]],
 
 def build_pairwise_data(labeled_data: list[dict[str, Any]],
                         historical: dict[str, dict],
-                        compute_weights: bool = False) -> tuple[pd.DataFrame, pd.Series, np.ndarray | None]:
+                        compute_weights: bool = False,
+                        symmetric: bool = False) -> tuple[pd.DataFrame, pd.Series, np.ndarray | None]:
     """Convert labeled scenarios into pairwise comparison samples.
 
     For each decision point with items [A, B, C], generate pairs:
@@ -128,6 +129,10 @@ def build_pairwise_data(labeled_data: list[dict[str, Any]],
     If compute_weights=True, returns sample weights based on priority score margin.
     High-margin pairs (obvious decisions) get weight 1.0.
     Low-margin pairs (nearly tied) get lower weight (min 0.3).
+
+    If symmetric=True, each pair (A,B) is augmented with its mirror (B,A) and a
+    flipped label. This enforces antisymmetry, removes item-position bias from
+    the OVEN_ITEMS ordering, and perfectly balances the label distribution.
     """
     rows = []
     labels = []
@@ -226,41 +231,34 @@ def build_pairwise_data(labeled_data: list[dict[str, Any]],
             a_demand_vs_avg = a_demand - a_hist_demand_hour if a_hist_demand_hour else 0
             b_demand_vs_avg = b_demand - b_hist_demand_hour if b_hist_demand_hour else 0
 
-            row = {
-                # Context
+            ctx = {
                 "decision_hour": decision_hour,
                 "store_type_encoded": store_encoded,
                 "is_weekend": is_weekend,
                 "day_of_week": day_of_week,
                 "num_items": features["num_oven_items"],
-
-                # Item A
-                "a_demand": a_demand,
-                "a_lcu": a_lcu,
-                "a_hold_time": a_hold,
-                "a_time_remaining": a_time_rem,
-                "a_cooked_qty": a_cooked,
+            }
+            feats_a = {
+                "a_demand": a_demand, "a_lcu": a_lcu, "a_hold_time": a_hold,
+                "a_time_remaining": a_time_rem, "a_cooked_qty": a_cooked,
                 "a_urgency": round(a_urgency, 4),
                 "a_demand_density": round(a_density, 4),
                 "a_hist_wo_hour": round(a_hist_wo_hour, 3),
                 "a_hist_wo_store": round(a_hist_wo_store, 3),
                 "a_hist_wo_overall": round(a_hist_wo_overall, 3),
                 "a_demand_vs_avg": round(a_demand_vs_avg, 2),
-
-                # Item B
-                "b_demand": b_demand,
-                "b_lcu": b_lcu,
-                "b_hold_time": b_hold,
-                "b_time_remaining": b_time_rem,
-                "b_cooked_qty": b_cooked,
+            }
+            feats_b = {
+                "b_demand": b_demand, "b_lcu": b_lcu, "b_hold_time": b_hold,
+                "b_time_remaining": b_time_rem, "b_cooked_qty": b_cooked,
                 "b_urgency": round(b_urgency, 4),
                 "b_demand_density": round(b_density, 4),
                 "b_hist_wo_hour": round(b_hist_wo_hour, 3),
                 "b_hist_wo_store": round(b_hist_wo_store, 3),
                 "b_hist_wo_overall": round(b_hist_wo_overall, 3),
                 "b_demand_vs_avg": round(b_demand_vs_avg, 2),
-
-                # Difference features (A - B)
+            }
+            diffs = {
                 "diff_urgency": round(a_urgency - b_urgency, 4),
                 "diff_demand_density": round(a_density - b_density, 4),
                 "diff_hold_time": a_hold - b_hold,
@@ -272,8 +270,23 @@ def build_pairwise_data(labeled_data: list[dict[str, Any]],
                 "diff_demand_vs_avg": round(a_demand_vs_avg - b_demand_vs_avg, 2),
             }
 
+            row = {**ctx, **feats_a, **feats_b, **diffs}
             rows.append(row)
             labels.append(label)
+            if compute_weights:
+                # weight was appended above; append mirror weight too if symmetric
+                pass
+
+            if symmetric:
+                # Mirror: swap A↔B, negate all diff features, flip label
+                feats_a_as_b = {k.replace("a_", "b_", 1): v for k, v in feats_a.items()}
+                feats_b_as_a = {k.replace("b_", "a_", 1): v for k, v in feats_b.items()}
+                diffs_neg = {k: -v for k, v in diffs.items()}
+                row_mirror = {**ctx, **feats_b_as_a, **feats_a_as_b, **diffs_neg}
+                rows.append(row_mirror)
+                labels.append(1 - label)
+                if compute_weights:
+                    weights.append(weights[-1])  # same confidence for the mirror
 
     X = pd.DataFrame(rows)
     y = pd.Series(labels, name="a_preferred")
@@ -285,7 +298,8 @@ class PairwiseModelTrainer:
     """Trains a pairwise ranking model (Learning to Rank approach)."""
 
     def __init__(self, n_estimators: int = 300, max_depth: int = 5,
-                 learning_rate: float = 0.1, random_state: int = 42):
+                 learning_rate: float = 0.1, random_state: int = 42,
+                 use_proba: bool = False):
         self.model = GradientBoostingClassifier(
             n_estimators=n_estimators,
             max_depth=max_depth,
@@ -294,6 +308,7 @@ class PairwiseModelTrainer:
             subsample=0.8,
         )
         self.random_state = random_state
+        self.use_proba = use_proba  # if True, rank_items uses predict_proba scores
         self.X: pd.DataFrame | None = None
         self.y: pd.Series | None = None
         self.sample_weights: np.ndarray | None = None
@@ -304,11 +319,12 @@ class PairwiseModelTrainer:
 
     def prepare_data(self, labeled_data: list[dict[str, Any]],
                      historical: dict[str, dict],
-                     use_weights: bool = False) -> None:
-        """Build pairwise feature matrix with optional sample weights."""
+                     use_weights: bool = False,
+                     symmetric: bool = False) -> None:
+        """Build pairwise feature matrix with optional sample weights and symmetry."""
         self.historical = historical
         self.X, self.y, self.sample_weights = build_pairwise_data(
-            labeled_data, historical, compute_weights=use_weights
+            labeled_data, historical, compute_weights=use_weights, symmetric=symmetric
         )
 
     def cross_validate(self, cv: int = 5) -> np.ndarray:
@@ -332,23 +348,27 @@ class PairwiseModelTrainer:
         ))
 
     def evaluate(self) -> dict[str, Any]:
-        """Generate evaluation report."""
-        if self.cv_scores is None:
-            self.cross_validate()
+        """Generate evaluation report. CV scores are optional — skipped when
+        cross_validate() was not called (e.g. for very large datasets)."""
         if self.feature_importance is None:
             self.train()
 
         y_pred = self.model.predict(self.X)
         class_report = classification_report(self.y, y_pred, output_dict=True)
 
-        self.report = {
-            "model_type": "pairwise_gradient_boosting",
-            "cross_validation": {
+        if self.cv_scores is not None:
+            cv_block = {
                 "cv_folds": len(self.cv_scores),
                 "scores": [round(s, 4) for s in self.cv_scores.tolist()],
                 "mean_accuracy": round(self.cv_scores.mean() * 100, 1),
                 "std_accuracy": round(self.cv_scores.std() * 100, 1),
-            },
+            }
+        else:
+            cv_block = {"note": "CV skipped (large dataset — see pairwise_val_accuracy in temporal_split)"}
+
+        self.report = {
+            "model_type": "pairwise_gradient_boosting",
+            "cross_validation": cv_block,
             "training_set": {
                 "n_samples": len(self.X),
                 "n_features": len(self.X.columns),
@@ -360,16 +380,22 @@ class PairwiseModelTrainer:
         return self.report
 
     def rank_items(self, scenario_features: dict[str, Any],
-                   present_items: list[str]) -> list[str]:
+                   present_items: list[str],
+                   use_proba: bool | None = None) -> list[str]:
         """Use the pairwise model to produce a full ranking for a scenario.
 
-        For each pair, predict preference. Aggregate wins to produce ranking.
+        For each pair, predict preference. Aggregate to produce ranking.
+
+        If use_proba is True (or self.use_proba is True), accumulate
+        predict_proba scores instead of hard 0/1 wins. This preserves
+        confidence information, breaks ties more gracefully, and avoids
+        intransitive rank cycles from binary win-counting.
         """
         if len(present_items) < 2:
             return present_items
 
-        # Count wins for each item
-        wins = defaultdict(int)
+        _use_proba = self.use_proba if use_proba is None else use_proba
+        scores: dict[str, float] = defaultdict(float)
         store_map = {"urban": 2, "suburban": 1, "highway": 0}
         day_map = {
             "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
@@ -439,14 +465,18 @@ class PairwiseModelTrainer:
                 "diff_demand_vs_avg": round((a_demand - a_hist_demand_hour) - (b_demand - b_hist_demand_hour), 2),
             }])
 
-            pred = self.model.predict(row)[0]
-            if pred == 1:
-                wins[item_a] += 1
+            if _use_proba:
+                p_a = self.model.predict_proba(row)[0][1]  # P(A before B)
+                scores[item_a] += p_a
+                scores[item_b] += 1.0 - p_a
             else:
-                wins[item_b] += 1
+                pred = self.model.predict(row)[0]
+                if pred == 1:
+                    scores[item_a] += 1
+                else:
+                    scores[item_b] += 1
 
-        # Rank by number of wins (descending)
-        return sorted(present_items, key=lambda x: -wins.get(x, 0))
+        return sorted(present_items, key=lambda x: -scores.get(x, 0))
 
     def evaluate_ranking_accuracy(self, labeled_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Evaluate full ranking accuracy: does pairwise model's top-1 match the label?"""
@@ -475,10 +505,14 @@ class PairwiseModelTrainer:
         }
 
     def save_model(self, path: str) -> str:
-        """Save trained model and historical data."""
+        """Save trained model, historical data, and config flags."""
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "wb") as f:
-            pickle.dump({"model": self.model, "historical": self.historical}, f)
+            pickle.dump({
+                "model": self.model,
+                "historical": self.historical,
+                "use_proba": self.use_proba,
+            }, f)
         return path
 
     def save_report(self, path: str) -> str:

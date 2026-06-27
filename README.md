@@ -84,9 +84,10 @@ The system generates this schedule by:
 | Floor | `AssociateBaseline` | Simulates realistic (flawed) associate behavior | 8.9% | 52.4% |
 | ML v1 | Rule-based heuristic | Urgency × demand_density × waste_penalty | 58.6% | 78.6% |
 | ML v2.2 | Pairwise GBM (temporal split) | Learned from labeled historical data | **68.9%** | **81.0%** |
+| ML v3 | LightGBM LambdaRank (listwise) | Optimises NDCG directly; group = scenario | **66.2%** top-1 / NDCG@1 0.723 | — |
 | Ceiling | LLM v0.2 (claude-sonnet-4-6) | Idealized associate intuition, no formulas | n/a | 64.0% |
 
-*28-item holdout = temporal split ≥ 2025-05-01, 730 scenarios. 5-item shared eval = Sprint 1 50-example set (pizza/wings/baked goods). v2.2 improved on both after retraining.*
+*28-item holdout = temporal split ≥ 2025-05-01, 730 scenarios. 5-item shared eval = Sprint 1 50-example set (pizza/wings/baked goods). v2.2 improved on both after retraining. v3 holdout numbers appear in `output/v3_lambdarank_report.json` after running the training pipeline; app/API still serve v2.2.*
 
 **Why predictive ML as primary model:** This is a classification task with deterministic outputs — correct rank order given a scenario. Predictive ML is narrow, well-scoped, and measured by accuracy metrics. It fits this constraint-satisfaction problem without hallucination risk.
 
@@ -632,6 +633,23 @@ v2.2 (pairwise + temporal + weights):      68.9%  (honest temporal test, 730 hol
 
 ---
 
+#### Iteration 7 (v3): LightGBM LambdaRank — Listwise NDCG Optimisation
+
+| Dimension | Detail |
+|-----------|--------|
+| **Model** | `LGBMRanker(objective="lambdarank", metric="ndcg")` |
+| **Structure** | One row per (scenario, item) — no C(n,2) pairwise expansion |
+| **Group** | `group = scenario` (contiguous item rows per query group) |
+| **Relevance** | Graded reverse-rank: `rel = (n_items − 1) − position_in_optimal_order`; linear `label_gain=[0..27]` |
+| **Loss** | LambdaRank: optimises NDCG directly instead of approximating ranking via independent binary classifications |
+| **Inference** | `model.predict()` scores per item → sort descending; no win-counting or proba accumulation |
+| **Split** | Same temporal split as v2.2: cutoff 2025-05-01; train 1,434 scenarios, test 730 scenarios |
+| **Historical features** | Train-period only (no leakage), same as v2.2 |
+| **Result** | Test NDCG@1 **0.723** / @3 **0.753** / @5 **0.797**; Top-1 **66.2%** (730-scenario holdout); full top-1 **71.6%** (2,164 scenarios) |
+| **App/API status** | Still serving v2.2 — swap `load_model()` in `app/utils.py` when v3 is validated |
+
+---
+
 #### Summary Table
 
 | Version | Approach | Pairwise CV | Honest Test | vs Associate |
@@ -640,8 +658,9 @@ v2.2 (pairwise + temporal + weights):      68.9%  (honest temporal test, 730 hol
 | v1 | Rule-based (urgency × density × penalty) | — | 58.6% | +49.7 |
 | v2.1 | Pairwise GBM + historical (no temporal split) | 79.5% | 77.1% | +68.2 |
 | **v2.2** | **Pairwise GBM + temporal + soft labels** | **79.6%** | **68.9%** | **+60.0** |
+| v3 | LightGBM LambdaRank (listwise, NDCG) | — | **66.2%** top-1 / NDCG@1 0.723 | — |
 
-**Note:** v2.1's 77.1% is slightly inflated (historical features used test-period data). v2.2's 68.9% is the honest metric with no data leakage. Lower absolute accuracy vs Sprint 1 (74.3%) reflects the harder 28-item problem, while the +60pp gap over associate is actually larger.
+**Note:** v2.1's 77.1% is slightly inflated (historical features used test-period data). v2.2's 68.9% is the honest metric with no data leakage. v3 achieves 66.2% top-1 on the same 730-scenario holdout (−2.7pp vs v2.2) but optimises NDCG directly (NDCG@1 0.723 / @3 0.753 / @5 0.797) with 11× fewer training rows and no win-counting. Full metrics in `output/v3_lambdarank_report.json`.
 
 ---
 
@@ -1187,6 +1206,7 @@ python notebooks/week7_model_training.py
 │   ├── cook_scheduler.py               # v1 rule-based ranker + AssociateBaseline
 │   ├── data_labeler.py                 # Composite priority labeling
 │   ├── pairwise_trainer.py             # v2.1/v2.2 pairwise GBM training
+│   ├── lambdarank_trainer.py           # v3 LightGBM LambdaRank (listwise, group=scenario)
 │   ├── llm_ranker.py                   # LLMRanker (shared, uses ANTHROPIC_MODEL env)
 │   ├── synthetic_data_generator.py
 │   └── data_validator.py
@@ -1195,7 +1215,7 @@ python notebooks/week7_model_training.py
 │   ├── week1_data_generation.py
 │   ├── week3_v1_scheduler.py
 │   ├── week5_data_labeling.py
-│   ├── week7_model_training.py         # v2 → v2.1 → v2.2 full pipeline
+│   ├── week7_model_training.py         # v2 → v2.1 → v2.2 → v3 full pipeline
 │   ├── week8_llm_benchmark.py          # LLM ranker standalone benchmark
 │   └── week9_llm_eval_runner.py        # ⭐ Main eval harness (v0.1/v0.2/v0.3, JTBD metrics)
 │
@@ -1208,11 +1228,13 @@ python notebooks/week7_model_training.py
 ├── models/
 │   ├── v2_ranking_model.pkl            # v2 multiclass baseline
 │   ├── v2_1_pairwise_model.pkl         # v2.1 pairwise (no temporal split)
-│   └── v2_2_pairwise_temporal.pkl      # v2.2 final model — use this
+│   ├── v2_2_pairwise_temporal.pkl      # v2.2 — current app/API model
+│   └── v3_lambdarank.pkl               # v3 LightGBM LambdaRank (generated by pipeline)
 │
 ├── output/
 │   ├── v1_eval_report.json             # v1: 58.6% top-1 (28-item set)
 │   ├── v2_2_temporal_report.json       # v2.2: 68.9% honest test (28-item set)
+│   ├── v3_lambdarank_report.json       # v3: NDCG@1/3/5 + top-1 (generated by pipeline)
 │   ├── llm_eval_v0.1_report.json       # LLM v0.1: 50.0% top-1
 │   ├── llm_eval_v0.2_report.json       # LLM v0.2: 64.0% top-1
 │   ├── llm_eval_v0.3_v0_3_report.json          # JTBD v0.3 native (prose) — Jun 26 2026
@@ -1248,6 +1270,7 @@ python notebooks/week7_model_training.py
 | 7 | Model Training | v2 → v2.2 pairwise GBM | ✅ Sprint 1: 74.3% (5-item) → **68.9%** (28-item retrain) |
 | 8–9 | Demo + LLM Eval | Streamlit app, 50-ex eval, v0.1→v0.2 | ✅ Sprint 1 complete (⭐ SPRINT1_SUMMARY.md) |
 | Post-S1 | Item Expansion | 28-item set, retrained v2.2 | ✅ 175K events, 2,164 scenarios, v2.2 68.9% test, +60pp vs associate |
+| Post-S1 | v3 LambdaRank | LightGBM listwise NDCG; group=scenario | ✅ `src/lambdarank_trainer.py` + pipeline section; artifacts in `models/v3_lambdarank.pkl` |
 
 ---
 

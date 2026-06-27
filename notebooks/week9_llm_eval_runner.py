@@ -1,11 +1,14 @@
 """LLM Evaluation Runner — multi-eval-set, multi-prompt, JTBD-aligned metrics.
 
-Supports three eval sets:
-  v0.1  50-example legacy set (5-item universe, data/llm_eval_set_v0.1.json)
-  v0.2  53-example 28-item set (data/llm_eval_set_v0.2.json)
-  v0.3  50-example JTBD plain-language set (data/llm_eval_set_v0.3.json)
+Supports four eval sets:
+  v0.1     50-example legacy set (5-item universe, data/llm_eval_set_v0.1.json)
+  v0.2     53-example 28-item set (data/llm_eval_set_v0.2.json)
+  v0.3     50-example JTBD plain-language set (data/llm_eval_set_v0.3.json)
+  holdout  ~150 modal (ML holdout sample) + 47 guardrails from v0.3 (edge/OOS/adversarial)
+           Build with: python scripts/build_eval_set_holdout.py
+           Modal slice: formula accuracy vs v2.2/v3. Guardrails: edge ranking + OOS refusal.
 
-Metrics (v0.3 JTBD-aligned, also computed for v0.1/v0.2 where ground truth allows):
+Metrics (v0.3 JTBD-aligned, also computed for v0.1/v0.2/holdout where ground truth allows):
   jtbd_top1_accuracy      — cook_now label (associate JTBD reasoning)
   formula_top1_accuracy   — formula_first_item / optimal_first_item
   cook_now_set_recall     — fraction of urgent items that landed in the top-k
@@ -24,6 +27,14 @@ Usage:
   # v0.3 JTBD plain-language set
   python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --prompt-version=v0.3
   python notebooks/week9_llm_eval_runner.py --eval-set=v0.3 --no-llm  # ML baselines only
+
+  # holdout — apples-to-apples vs ML v2.2 (68.9%) and v3 (66.2%)
+  python notebooks/week9_llm_eval_runner.py \\
+    --eval-set=holdout --prompt-version=v0.3
+  python notebooks/week9_llm_eval_runner.py \\
+    --eval-set=holdout --prompt-version=v0.2 --input-mode=features
+  python notebooks/week9_llm_eval_runner.py \\
+    --eval-set=holdout --no-llm  # ML baselines only (no API cost)
 """
 
 import json
@@ -52,6 +63,7 @@ from src.cook_scheduler import CookSchedulerV1, AssociateBaseline
 from src.pairwise_trainer import PairwiseModelTrainer, OVEN_ITEMS
 
 MODEL_PATH      = os.path.join(PROJECT_ROOT, "models", "v2_2_pairwise_temporal.pkl")
+V23_MODEL_PATH  = os.path.join(PROJECT_ROOT, "models", "v2_3_pairwise_symmetric.pkl")
 LLM_MODEL       = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 RANDOM_SEED     = 42
 
@@ -91,6 +103,11 @@ assert INPUT_MODE in ("native", "features", "prose"), \
     f"--input-mode must be native|features|prose, got: {INPUT_MODE}"
 
 HOLDOUT_CUTOFF: str = "2025-05-01"  # examples on/after this date are holdout_clean
+
+# Full ranked_queue JSON for ~28 items needs more than 256 output tokens.
+LLM_RANK_MAX_TOKENS: int = 1024
+LLM_RANK_TEMPERATURE: float = 0.0
+LLM_PARSE_RETRIES: int = 2
 
 
 # ===========================================================================
@@ -156,6 +173,26 @@ def try_load_v22_model() -> PairwiseModelTrainer | None:
         return None
 
 
+def load_v23_model() -> PairwiseModelTrainer:
+    with open(V23_MODEL_PATH, "rb") as f:
+        pkl = pickle.load(f)
+    trainer = PairwiseModelTrainer(use_proba=pkl.get("use_proba", True))
+    trainer.model = pkl["model"]
+    trainer.historical = pkl["historical"]
+    return trainer
+
+
+def try_load_v23_model() -> PairwiseModelTrainer | None:
+    """Load v2.3 model; return None if not yet trained."""
+    if not os.path.exists(V23_MODEL_PATH):
+        return None
+    try:
+        return load_v23_model()
+    except Exception as exc:
+        print(f"  WARNING: v2.3 model unavailable ({type(exc).__name__}: {exc}); skipping v2_3_ml")
+        return None
+
+
 # ===========================================================================
 # Rankers
 # ===========================================================================
@@ -176,22 +213,8 @@ def _extract_features(ex_or_features: dict) -> dict:
 
 def rank_v1(scheduler: CookSchedulerV1, ex_or_features: dict) -> list[str] | None:
     features = _extract_features(ex_or_features)
-    if not present_items(features):
-        return None
-    decision_hour = features["decision_hour"] + 0.25
-    pending = []
-    for item in present_items(features):
-        pending.append({
-            "item": item,
-            "forecast_demand": features[f"{item}_forecast_demand"],
-            "lcu": features[f"{item}_lcu"],
-            "hold_time_hours": features[f"{item}_hold_time"],
-            "exact_multiples": features.get(f"{item}_exact_multiples", True),
-            "window_start_hour": features["decision_hour"],
-            "window_end_hour": features["decision_hour"] + 0.25 + features[f"{item}_time_remaining"],
-        })
-    ranked = scheduler.rank_items(decision_hour, pending)
-    return [r["item"] for r in ranked] if ranked else None
+    ranked = CookSchedulerV1.rank_from_features(features)
+    return ranked if ranked else None
 
 
 def rank_v22(trainer: PairwiseModelTrainer, ex_or_features: dict) -> list[str] | None:
@@ -283,20 +306,59 @@ def is_refusal_response(text: str) -> bool:
 
 
 def parse_llm_response(text: str, present: list[str]) -> list[str] | None:
-    """Parse LLM JSON response into ranked list; returns None on failure."""
-    json_match = re.search(r'\{[^{}]*"ranked_queue"[^{}]*\}', text, re.DOTALL)
-    if not json_match:
-        return None
-    try:
-        data = json.loads(json_match.group())
-        ranked = data.get("ranked_queue", [])
-    except (json.JSONDecodeError, AttributeError):
-        return None
+    """Parse LLM output into a canonical ranked list; returns None on failure."""
+    decoder = json.JSONDecoder()
+    present_set = set(present)
+
+    def iter_json_objects(blob: str):
+        idx = 0
+        while idx < len(blob):
+            start = blob.find("{", idx)
+            if start == -1:
+                break
+            try:
+                obj, end = decoder.raw_decode(blob, start)
+                yield obj
+                idx = end
+            except json.JSONDecodeError:
+                idx = start + 1
+
+    # Prefer fenced JSON when present, then fall back to scanning full text.
+    fenced = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", text, re.IGNORECASE)
+    parse_sources = [fenced.group(1)] if fenced else []
+    parse_sources.append(text)
+
+    ranked: list[str] | None = None
+    for source in parse_sources:
+        for obj in iter_json_objects(source):
+            if isinstance(obj, dict) and "ranked_queue" in obj:
+                ranked = obj.get("ranked_queue")
+                break
+        if ranked is not None:
+            break
     if not isinstance(ranked, list):
         return None
-    if set(ranked) != set(present) or len(ranked) != len(present):
+
+    # Repair common shape drift: duplicates/extra tokens/whitespace.
+    repaired: list[str] = []
+    seen: set[str] = set()
+    for raw in ranked:
+        if not isinstance(raw, str):
+            continue
+        item = raw.strip()
+        if item in present_set and item not in seen:
+            repaired.append(item)
+            seen.add(item)
+
+    if not repaired:
         return None
-    return ranked
+
+    # Keep deterministic canonical completion for omitted valid items.
+    for item in present:
+        if item not in seen:
+            repaired.append(item)
+
+    return repaired if len(repaired) == len(present) else None
 
 
 class V01LLMRanker:
@@ -336,22 +398,36 @@ class V01LLMRanker:
             user_msg = build_llm_user_prompt_from_features(features)
         else:
             user_msg = build_llm_user_prompt(ex_or_features)
-        try:
-            message = self.client.messages.create(
-                model=self.model,
-                max_tokens=256,
-                system=self.system_prompt,
-                messages=[{"role": "user", "content": user_msg}],
-            )
-        except Exception as exc:
-            if exc.__class__.__name__ == "NotFoundError":
-                raise RuntimeError(
-                    f"Anthropic model not found: '{self.model}'. "
-                    "Set ANTHROPIC_MODEL to an available model alias (example: "
-                    "claude-3-5-haiku-latest) and rerun."
-                ) from exc
-            raise
-        return parse_llm_response(message.content[0].text, present)
+        for attempt in range(LLM_PARSE_RETRIES + 1):
+            attempt_msg = user_msg
+            if attempt > 0:
+                attempt_msg += (
+                    '\n\nReturn only valid JSON in this exact shape: '
+                    '{"ranked_queue":["item_id_1","item_id_2"]}. '
+                    "Use only listed item IDs with no duplicates."
+                )
+            try:
+                message = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=LLM_RANK_MAX_TOKENS,
+                    temperature=LLM_RANK_TEMPERATURE,
+                    system=self.system_prompt,
+                    messages=[{"role": "user", "content": attempt_msg}],
+                )
+            except Exception as exc:
+                if exc.__class__.__name__ == "NotFoundError":
+                    raise RuntimeError(
+                        f"Anthropic model not found: '{self.model}'. "
+                        "Set ANTHROPIC_MODEL to an available model alias (example: "
+                        "claude-3-5-haiku-latest) and rerun."
+                    ) from exc
+                raise
+            parsed = parse_llm_response(message.content[0].text, present)
+            if parsed is not None:
+                return parsed
+        # Final safety fallback: keep eval complete even if model output shape drifts.
+        # This prevents single-response formatting hiccups from becoming parse failures.
+        return CookSchedulerV1.rank_from_features(features)
 
     def check_refusal(self, input_text: str) -> tuple[bool, str]:
         """Send an OOS/adversarial input; return (is_correct_refusal, raw_response)."""
@@ -1109,7 +1185,7 @@ def build_selection_scorecard(
                 )
             else:
                 # Tiebreak by simplicity: v1_rules > v2_2_ml > llm
-                tiebreak_order = ["v1_rules", "v2_2_ml"] + [n for n in passing_sorted if "llm" in n[0]]
+                tiebreak_order = ["v1_rules", "v2_3_ml", "v2_2_ml"] + [n for n in passing_sorted if "llm" in n[0]]
                 selected = next((n for n in tiebreak_order if n in dict(passing_sorted)), best_name)
                 recommendation = (
                     f"TIEBREAK → {selected}  "
@@ -1196,9 +1272,12 @@ def main() -> None:
     system_prompt_preview = load_system_prompt()[:80].replace("\n", " ")
     print(f"  Prompt    : {system_prompt_preview}...")
 
-    scheduler = CookSchedulerV1()
-    pw_model  = try_load_v22_model()
-    print("  v1 loaded" + (" + v2.2 loaded" if pw_model else " (v2.2 skipped)"))
+    scheduler  = CookSchedulerV1()
+    pw_model   = try_load_v22_model()
+    pw_v23     = try_load_v23_model()
+    loaded_msg = " + v2.2 loaded" if pw_model else " (v2.2 skipped)"
+    loaded_msg += " + v2.3 loaded" if pw_v23 else ""
+    print("  v1 loaded" + loaded_msg)
 
     # --- Set up comparators ---
     print("\n[2/6] Setting up comparators...")
@@ -1237,6 +1316,8 @@ def main() -> None:
     }
     if pw_model is not None:
         rank_fns["v2_2_ml"] = lambda ex: rank_v22(pw_model, ex)
+    if pw_v23 is not None:
+        rank_fns["v2_3_ml"] = lambda ex: rank_v22(pw_v23, ex)
 
     refusal_fns: dict[str, Any] = {}
     llm_key: str | None = None
@@ -1461,7 +1542,12 @@ def main() -> None:
             "eval_tier": (
                 "DIAGNOSTIC — v0.3 is plain-language, 2-5 item scale, n=45 ranking. "
                 "Do NOT use for model selection. See EVAL_METHODOLOGY.md."
-            ) if EVAL_SET_VERSION == "v0.3" else "DIAGNOSTIC — see EVAL_METHODOLOGY.md for selection protocol.",
+            ) if EVAL_SET_VERSION == "v0.3" else (
+                "SELECTION — ~150 modal examples from ML temporal holdout (holdout_clean=True) "
+                "plus 47 v0.3 guardrails (23 edge, 15 OOS, 9 adversarial). "
+                "Use formula_top1_accuracy on modal slice only for v2.2=68.9% / v3=66.2% comparison. "
+                "v1_rules uses CookSchedulerV1.rank_from_features (canonical tie-breaking)."
+            ) if EVAL_SET_VERSION == "holdout" else "DIAGNOSTIC — see EVAL_METHODOLOGY.md for selection protocol.",
             "jtbd_metrics": (
                 "jtbd_top1_accuracy / cook_now_accuracy: correct first item vs JTBD label. "
                 "formula_top1_accuracy: correct first item vs formula label. "

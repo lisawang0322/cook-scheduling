@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.model_trainer import ModelTrainer, build_feature_matrix
 from src.pairwise_trainer import PairwiseModelTrainer, OVEN_ITEMS, compute_historical_features
+from src.lambdarank_trainer import LambdaRankTrainer
 from src.cook_scheduler import AssociateBaseline
 
 
@@ -337,6 +338,225 @@ def main():
         print(f"\n  ⚠️  Limited improvement over associate baseline")
 
     print("\n" + "=" * 60)
+
+    # =========================================================================
+    # v2.3: SYMMETRIC PAIRS + PROBA AGGREGATION (no sample weights)
+    # Implements three improvements over v2.2:
+    #   1. Symmetric pair augmentation — removes item-position bias from
+    #      OVEN_ITEMS ordering and perfectly balances the 69/31 label skew.
+    #   2. Probability-based rank aggregation — preserves confidence, avoids
+    #      intransitive cycles from hard 0/1 win-counting.
+    #   3. No sample weights — edge/near-tie pairs get equal weight so the
+    #      model isn't starved of signal on hard waste-avoidance decisions.
+    # Same temporal split and historical features as v2.2.
+    # =========================================================================
+    print("\n\n")
+    print("=" * 60)
+    print("  v2.3: SYMMETRIC PAIRS + PROBA AGGREGATION (no weights)")
+    print("=" * 60)
+
+    print(f"\n  Reusing v2.2 temporal split: cutoff={cutoff_date}, "
+          f"train={len(train_scenarios):,}, test={len(test_scenarios):,}")
+    print("  Reusing v2.2 historical features (train-only, no leakage).")
+
+    print("\n  Building pairwise data (symmetric=True, use_weights=False)...")
+    pw_v23 = PairwiseModelTrainer(
+        n_estimators=200, max_depth=5, learning_rate=0.1, random_state=42,
+        use_proba=True,
+    )
+    pw_v23.prepare_data(train_scenarios, hist_train, use_weights=False, symmetric=True)
+
+    n_orig = pw_v22.X.shape[0]
+    n_sym = pw_v23.X.shape[0]
+    label_dist = pw_v23.y.value_counts().to_dict()
+    print(f"    Train pairs (symmetric): {n_sym:,}  (v2.2 had {n_orig:,}, ×{n_sym/n_orig:.2f}x)")
+    print(f"    Label distribution: {label_dist}  (balance: {100*label_dist.get(1,0)/n_sym:.1f}% class-1)")
+
+    print("\n  Running 5-fold CV on TRAIN set...")
+    pw_v23_cv = pw_v23.cross_validate(cv=5)
+    print(f"    Train CV accuracy: {pw_v23_cv.mean()*100:.1f}% ± {pw_v23_cv.std()*100:.1f}%")
+
+    print("  Training final model (use_proba=True)...")
+    pw_v23.train()
+    pw_v23.evaluate()
+
+    print("\n  Evaluating on HELD-OUT TEST SET (temporal)...")
+    test_ranking_v23 = pw_v23.evaluate_ranking_accuracy(test_scenarios)
+    full_ranking_v23 = pw_v23.evaluate_ranking_accuracy(labeled_data)
+    print(f"    Test top-1 accuracy:  {test_ranking_v23['ranking_top1_accuracy']:.1f}%  "
+          f"(v2.2: {test_ranking['ranking_top1_accuracy']:.1f}%  "
+          f"Δ={test_ranking_v23['ranking_top1_accuracy']-test_ranking['ranking_top1_accuracy']:+.1f}pp)")
+    print(f"    Full dataset top-1:   {full_ranking_v23['ranking_top1_accuracy']:.1f}%  "
+          f"(v2.2: {full_ranking['ranking_top1_accuracy']:.1f}%)")
+
+    pw_v23_model_path = pw_v23.save_model(os.path.join(models_dir, "v2_3_pairwise_symmetric.pkl"))
+    print(f"\n  Model saved to: {pw_v23_model_path}")
+
+    pw_v23.report["improvements"] = {
+        "symmetric_pairs": True,
+        "use_proba_aggregation": True,
+        "sample_weights": False,
+        "note": ("Symmetric augmentation balances 69/31 label skew and removes item-position "
+                 "bias. Proba aggregation preserves confidence and avoids intransitive rank "
+                 "cycles. No weights lets edge/near-tie pairs contribute equally."),
+    }
+    pw_v23.report["temporal_split"] = {
+        "cutoff_date": cutoff_date,
+        "train_scenarios": len(train_scenarios),
+        "test_scenarios": len(test_scenarios),
+        "train_cv_accuracy": round(pw_v23_cv.mean() * 100, 1),
+        "test_top1_accuracy": test_ranking_v23["ranking_top1_accuracy"],
+        "full_top1_accuracy": full_ranking_v23["ranking_top1_accuracy"],
+    }
+    pw_v23_report_path = os.path.join(output_dir, "v2_3_symmetric_report.json")
+    pw_v23.save_report(pw_v23_report_path)
+    print(f"  Report saved to: {pw_v23_report_path}")
+
+    # =========================================================================
+    # v3: LightGBM LambdaRank (listwise NDCG optimisation, group = scenario)
+    # =========================================================================
+    print("\n\n")
+    print("=" * 60)
+    print("  v3: LightGBM LambdaRank (listwise, group=scenario)")
+    print("=" * 60)
+    print(f"\n  Reusing v2.2 temporal split: cutoff={cutoff_date}, "
+          f"train={len(train_scenarios):,}, test={len(test_scenarios):,}")
+    print("  Reusing v2.2 historical features (train-only, no leakage).")
+    print("\n  Key differences vs pairwise GBM:")
+    print("    - One row per (scenario, item) — no C(n,2) explosion")
+    print("    - Relevance = reverse rank position (graded, linear label_gain)")
+    print("    - LambdaRank loss optimises NDCG directly")
+    print("    - Inference: model.predict() scores → sort desc (no win-counting)")
+
+    print("\n  Building listwise training data...")
+    v3_trainer = LambdaRankTrainer(
+        n_estimators=300,
+        learning_rate=0.05,
+        num_leaves=31,
+        min_child_samples=20,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=42,
+    )
+    v3_trainer.prepare_data(train_scenarios, hist_train)
+    print(f"    Scenarios (train): {len(v3_trainer.group):,}")
+    print(f"    Item-rows  (train): {len(v3_trainer.X):,}")
+    print(f"    Features per row:  {len(v3_trainer.feature_names)}")
+    print(f"    Relevance range:   [0, {max(v3_trainer.y)}]")
+    avg_group = sum(v3_trainer.group) / len(v3_trainer.group)
+    print(f"    Avg items/scenario: {avg_group:.1f}")
+
+    print("\n  Training final model...")
+    v3_trainer.train()
+    print("  Done.")
+
+    # --- Evaluate on TRAINING set (in-sample NDCG) ---
+    print("\n  Evaluating on TRAIN set (in-sample)...")
+    train_eval_v3 = v3_trainer.evaluate(labeled_data=train_scenarios)
+    print(f"    Train NDCG@1: {train_eval_v3['ndcg_at_1']:.4f}")
+    print(f"    Train NDCG@3: {train_eval_v3['ndcg_at_3']:.4f}")
+    print(f"    Train NDCG@5: {train_eval_v3['ndcg_at_5']:.4f}")
+    print(f"    Train Top-1 accuracy: "
+          f"{train_eval_v3['ranking_accuracy']['ranking_top1_accuracy']:.1f}%")
+
+    # --- Evaluate on HELD-OUT TEST SET (temporal, honest) ---
+    print("\n  Evaluating on HELD-OUT TEST SET (temporal)...")
+    test_eval_v3 = v3_trainer.evaluate(labeled_data=test_scenarios)
+    test_ndcg1_v3 = test_eval_v3["ndcg_at_1"]
+    test_ndcg3_v3 = test_eval_v3["ndcg_at_3"]
+    test_ndcg5_v3 = test_eval_v3["ndcg_at_5"]
+    test_top1_v3 = test_eval_v3["ranking_accuracy"]["ranking_top1_accuracy"]
+    print(f"    Test NDCG@1: {test_ndcg1_v3:.4f}")
+    print(f"    Test NDCG@3: {test_ndcg3_v3:.4f}")
+    print(f"    Test NDCG@5: {test_ndcg5_v3:.4f}")
+    print(f"    Test Top-1 accuracy: {test_top1_v3:.1f}%  "
+          f"(v2.2: {test_ranking['ranking_top1_accuracy']:.1f}%  "
+          f"Δ={test_top1_v3-test_ranking['ranking_top1_accuracy']:+.1f}pp)")
+
+    # --- Evaluate on full dataset ---
+    print("\n  Evaluating on FULL dataset...")
+    full_eval_v3 = v3_trainer.evaluate(labeled_data=labeled_data)
+    full_top1_v3 = full_eval_v3["ranking_accuracy"]["ranking_top1_accuracy"]
+    print(f"    Full Top-1 accuracy: {full_top1_v3:.1f}%")
+
+    # --- Save model ---
+    v3_model_path = v3_trainer.save_model(os.path.join(models_dir, "v3_lambdarank.pkl"))
+    print(f"\n  Model saved to: {v3_model_path}")
+
+    # --- Save report (test-set eval is the definitive record) ---
+    v3_trainer.report.update({
+        "temporal_split": {
+            "cutoff_date": cutoff_date,
+            "train_scenarios": len(train_scenarios),
+            "test_scenarios": len(test_scenarios),
+        },
+        "test_ndcg_at_1": test_ndcg1_v3,
+        "test_ndcg_at_3": test_ndcg3_v3,
+        "test_ndcg_at_5": test_ndcg5_v3,
+        "test_top1_accuracy": test_top1_v3,
+        "full_top1_accuracy": full_top1_v3,
+        "train_ndcg_at_1": train_eval_v3["ndcg_at_1"],
+        "train_ndcg_at_3": train_eval_v3["ndcg_at_3"],
+        "train_ndcg_at_5": train_eval_v3["ndcg_at_5"],
+        "train_top1_accuracy": train_eval_v3["ranking_accuracy"]["ranking_top1_accuracy"],
+        "improvements": {
+            "listwise_structure": True,
+            "ndcg_optimised_directly": True,
+            "no_pairwise_expansion": True,
+            "no_win_counting": True,
+            "note": (
+                "LGBMRanker(objective=lambdarank) with group=scenario and graded "
+                "reverse-rank relevance. One row per (scenario, item) instead of "
+                "C(n,2) pairs. Eliminates win-counting at inference. Linear label_gain "
+                "prevents 2^label blow-up across 28 grades."
+            ),
+        },
+    })
+    v3_report_path = os.path.join(output_dir, "v3_lambdarank_report.json")
+    v3_trainer.save_report(v3_report_path)
+    print(f"  Report saved to: {v3_report_path}")
+
+    v3_trainer.print_summary()
+
+    # --- Final comparison: all models ---
+    print("\n" + "=" * 60)
+    print("  FINAL COMPARISON: Associate vs v1 vs v2.x vs v3")
+    print("=" * 60)
+
+    print(f"\n  {'Model':<56s} {'CV/Train':>10s} {'Test':>10s}")
+    print(f"  {'-'*56} {'-'*10} {'-'*10}")
+    print(f"  {'Associate baseline':<56s} {'—':>10s} {associate_accuracy:>9.1f}%")
+    print(f"  {'v1 (rule-based heuristic)':<56s} {'—':>10s} {v1_accuracy:>9.1f}%")
+    print(f"  {'v2.1 (pairwise GBM, no split)':<56s} "
+          f"{pw_cv.mean()*100:>9.1f}% "
+          f"{ranking_eval['ranking_top1_accuracy']:>9.1f}%")
+    print(f"  {'v2.2 (pairwise + temporal + weights, hard wins)':<56s} "
+          f"{pw_v22_cv.mean()*100:>9.1f}% "
+          f"{test_ranking['ranking_top1_accuracy']:>9.1f}%")
+    print(f"  {'v2.3 (symmetric + proba, no weights)':<56s} "
+          f"{pw_v23_cv.mean()*100:>9.1f}% "
+          f"{test_ranking_v23['ranking_top1_accuracy']:>9.1f}%")
+    print(f"  {'v3  (LightGBM lambdarank, listwise)':<56s} "
+          f"{'—':>10s} "
+          f"{test_top1_v3:>9.1f}%")
+
+    delta_v3_v22 = test_top1_v3 - test_ranking['ranking_top1_accuracy']
+    delta_v3_assoc = test_top1_v3 - associate_accuracy
+    print(f"\n  v3 vs v2.2 on holdout:          {delta_v3_v22:+.1f}pp")
+    print(f"  v3 vs associate baseline:        {delta_v3_assoc:+.1f}pp")
+    print(f"  v3 test NDCG@1/3/5:             "
+          f"{test_ndcg1_v3:.4f} / {test_ndcg3_v3:.4f} / {test_ndcg5_v3:.4f}")
+
+    if delta_v3_v22 > 0:
+        print(f"\n  v3 beats v2.2 by {delta_v3_v22:+.1f}pp on temporal holdout.")
+    elif delta_v3_v22 == 0:
+        print(f"\n  v3 matches v2.2 on temporal holdout.")
+    else:
+        print(f"\n  v3 trails v2.2 by {abs(delta_v3_v22):.1f}pp on temporal holdout "
+              f"— app/API stays on v2.2 pending further tuning.")
+
+    print(f"\n  NOTE: App/API still serves v2.2 (models/v2_2_pairwise_temporal.pkl).")
+    print(f"        Swap app/utils.py:load_model() to v3_lambdarank.pkl when ready.")
 
 
 if __name__ == "__main__":
