@@ -1,5 +1,5 @@
 // Shared types, item definitions, ranking logic, and time utilities for the
-// 7-Eleven Hot Food Assistant (tablet + scenario simulator).
+// Hot Food Assistant (tablet + scenario simulator).
 
 import { DEFAULT_STORE_CONFIG, getDaypartRule, type StoreConfig } from "./store-config";
 

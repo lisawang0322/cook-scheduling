@@ -1,4 +1,4 @@
-# Evaluation Methodology — 7-Eleven Cook Order AI
+# Evaluation Methodology — Hot Food Cook Order AI
 
 **Version:** 1.1 | **Date:** 2026-06-27 | **Author:** Lisa Wang
 

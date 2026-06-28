@@ -1,4 +1,4 @@
-# 7-Eleven Cook Scheduling System — Architectural Decisions Memo
+# Hot Food Cook Scheduling System — Architectural Decisions Memo
 
 **Project:** AI-Powered Hot Food Cook Sequencing System  
 **Date:** June 13, 2026  
@@ -39,7 +39,7 @@
 
 ### Scope
 - All data is synthetic, modeling 3 store types (urban/suburban/highway) over 6 months
-- Private data (simulated 7-Eleven operations), not shared across tenants
+- Private data (simulated convenience-store operations), not shared across tenants
 
 ### Isolation
 - **Temporal split:** Training partition (Days 1-120, Jan-Apr) vs. Testing partition (Days 121-180, May-Jun)

@@ -157,7 +157,7 @@ function LockScreen({
 }) {
   return (
     <div className="relative h-[720px] bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col items-center justify-center px-6">
-      <div className="text-xs uppercase tracking-[0.3em] opacity-60">7-Eleven</div>
+      <div className="text-xs uppercase tracking-[0.3em] opacity-60">Hot Food Hero</div>
       <div className="mt-2 text-base opacity-80">Store {scenario.storeId} · {scenario.storeType}</div>
       <div className="mt-8 text-7xl font-bold tabular-nums">{scenario.time}</div>
       <div className="mt-2 text-sm opacity-70">{scenario.dayLabel}</div>

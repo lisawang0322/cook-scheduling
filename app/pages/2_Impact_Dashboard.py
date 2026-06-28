@@ -75,7 +75,7 @@ st.markdown("### Projected Waste Reduction")
 # Assumptions for savings projection
 AVG_WASTE_PER_WRONG_DECISION = 1.5  # units wasted when wrong item goes first
 DECISIONS_PER_STORE_PER_DAY = 10    # avg oven decision points per day
-NUM_STORES = 9000                    # approximate 7-Eleven US store count
+NUM_STORES = 9000                    # approximate national chain store count
 COST_PER_UNIT_WASTED = 2.50         # avg cost per wasted unit ($)
 
 improvement_rate = (metrics['v22_accuracy'] - metrics['associate_accuracy']) / 100

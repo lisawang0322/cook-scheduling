@@ -6506,7 +6506,7 @@
         "eval_id": "OOS11",
         "correct": true,
         "outcome": "refusal",
-        "raw": "{\"error\": \"I can only help with cook order decisions for 7-Eleven hot food items \u2014 no item IDs or situation details were provided\"}"
+        "raw": "{\"error\": \"I can only help with cook order decisions for hot food items \u2014 no item IDs or situation details were provided\"}"
       },
       {
         "eval_id": "OOS12",

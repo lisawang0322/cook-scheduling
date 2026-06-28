@@ -1,4 +1,4 @@
-"""7-Eleven Cook Scheduling — Associate Tablet Interface
+"""Hot Food Cook Scheduling — Associate Tablet Interface
 
 A self-contained screen simulating the hand-held tablet experience used by store associates.
 Includes color-coded queue, timing metrics, explanation, override controls, and cook confirmation.
@@ -22,7 +22,7 @@ from utils import (
 )
 
 st.set_page_config(
-    page_title="7-Eleven Hot Food Assistant",
+    page_title="Hot Food Assistant",
     page_icon="🏪",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -195,7 +195,7 @@ st.sidebar.info(
 st.markdown(
     f"""
     <div class="tablet-header">
-        <div class="tablet-title">🏪 7-Eleven Hot Food Assistant</div>
+        <div class="tablet-title">🏪 Hot Food Assistant</div>
         <div class="tablet-subtitle">
             Store Type: {STORE_TYPE_LABELS.get(store_type, store_type).split(' (')[0]} &nbsp;|&nbsp; 
             Shift: {day_of_week} at {HOUR_LABELS.get(decision_hour, f'{decision_hour}:00')}

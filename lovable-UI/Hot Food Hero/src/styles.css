@@ -51,7 +51,7 @@
 :root {
   --radius: 0.75rem;
 
-  /* 7-Eleven brand palette */
+  /* App brand palette */
   --background: oklch(0.985 0.005 95);
   --foreground: oklch(0.18 0.02 160);
 

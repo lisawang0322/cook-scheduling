@@ -26,7 +26,7 @@ An AI system that helps store associates decide which hot food item to cook firs
 
 ### The Customer
 
-New-hire store associate (<6 months on job) at a 7-Eleven with an active hot food program. Age 18–55, high school education, English may not be first language, minimal food-service training. Cooks solo while simultaneously handling the register, restocking shelves, and serving customers.
+New-hire store associate (<6 months on job) at a convenience store with an active hot food program. Age 18–55, high school education, English may not be first language, minimal food-service training. Cooks solo while simultaneously handling the register, restocking shelves, and serving customers.
 
 ### The Moment
 
@@ -122,8 +122,8 @@ This section documents every assumption baked into the synthetic data generator,
 † = non-exact multiples (all other items use exact multiples of their LCU)
 
 - **28 item types** are modeled. Baked goods (24h hold) removed from scope.
-- Hold times and LCUs are domain-expert estimates, not from actual 7-Eleven operational data.
-- All data is **entirely synthetic** — no real 7-Eleven store data is used.
+- Hold times and LCUs are domain-expert estimates, not from actual retailer operational data.
+- All data is **entirely synthetic** — no real store data is used.
 
 **Cooking Equipment:**
 - **Oven:** 23 items (wings, chicken, sides, ethnic handhelds, bakery/breakfast, pizza, slow-oven pastries). These compete for oven time.

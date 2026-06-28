@@ -18,7 +18,7 @@ _C_AFT_DINNER   = {0:0.1,1:0.1,2:0.1,3:0.1,4:0.1,5:0.15,6:0.3,7:0.4,8:0.5,9:0.6,
 
 
 class SyntheticDataGenerator:
-    """Generates synthetic cook scheduling data for 7-Eleven hot food items."""
+    """Generates synthetic cook scheduling data for hot food items."""
 
     ITEM_PROPERTIES = {
         "wings_bone_in":      {"hold_time_hours": 2, "lowest_cookable_unit": 5,  "exact_multiples": True,  "unit": "pieces",     "equipment": "oven"},

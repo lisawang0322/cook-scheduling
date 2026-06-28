@@ -81,7 +81,7 @@ export function ImpactDashboard() {
         <div>
           <h1 className="text-3xl font-bold">Impact Dashboard</h1>
           <p className="text-muted-foreground mt-1 flex items-center gap-2">
-            Fleet-wide projections grounded in 7-Eleven cost models.
+            Fleet-wide projections grounded in retailer cost models.
             {isLoading && (
               <span className="inline-flex items-center gap-1 text-xs text-primary">
                 <Loader2 className="h-3 w-3 animate-spin" /> Loading real metrics…

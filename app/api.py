@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="7-Eleven Hot Food Scheduler API", lifespan=lifespan)
+app = FastAPI(title="Hot Food Scheduler API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

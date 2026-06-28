@@ -14,8 +14,8 @@ import { ScenarioProvider } from "@/lib/scenario-context";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "7-Eleven Hot Food Cook Scheduling Optimizer" },
-      { name: "description", content: "ML-powered cook scheduling for 7-Eleven hot food across overlapping daypart windows." },
+      { title: "Hot Food Cook Scheduling Optimizer" },
+      { name: "description", content: "ML-powered cook scheduling for hot food across overlapping daypart windows." },
     ],
   }),
   component: App,
@@ -46,7 +46,7 @@ function App() {
                   <Flame className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <div className="font-bold text-base leading-tight">7-Eleven</div>
+                  <div className="font-bold text-base leading-tight">Hot Food Hero</div>
                   <div className="text-xs opacity-75">Cook Optimizer</div>
                 </div>
               </div>

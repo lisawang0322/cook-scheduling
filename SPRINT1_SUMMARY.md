@@ -1,4 +1,4 @@
-# Sprint 1 Evaluation Summary — 7-Eleven Cook Order AI
+# Sprint 1 Evaluation Summary — Hot Food Cook Order AI
 
 **Author:** Lisa Wang | **Period:** Weeks 1–9 + Post-Sprint (Jun 2026) | **Updated:** June 27, 2026  
 **LLM model:** claude-sonnet-4-6 | **Protocol:** [`EVAL_METHODOLOGY.md`](EVAL_METHODOLOGY.md)
@@ -54,6 +54,8 @@ Feature engineering (per-item urgency, demand, hold time, store/hour context)
 ---
 
 ## 2. Evaluation Results
+
+> Full versioned tables (all eval sets, tiers, and breakdowns): [`VERSIONED_EVAL_RESULTS.md`](VERSIONED_EVAL_RESULTS.md)
 
 ### Overall Performance
 
